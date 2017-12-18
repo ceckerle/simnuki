@@ -12,7 +12,7 @@ function GeneralDataInputOutputCharacteristic(keys) {
         descriptors: [
             new BlenoDescriptor({
                 uuid: '2902',   // client characterstic configuration
-                value: 'set a value'
+                value: new Buffer([0x00, 0x00])
             })
         ]
     });

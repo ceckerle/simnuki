@@ -39,7 +39,8 @@ function PairingGeneralDataInputOutputCharacteristic(keys, config) {
             properties: ['read', 'write', 'indicate', 'notify'],
             descriptors: [
                 new BlenoDescriptor({
-                    uuid: '2902'   // client characterstic configuration
+                    uuid: '2902',   // client characterstic configuration
+                    value: new Buffer([0x00, 0x00])
                 })
             ]
         });
