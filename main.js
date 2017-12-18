@@ -84,7 +84,8 @@ bleno.on('stateChange', function (state) {
         for (var i = 0; i < uuidReverseBuf.length; i++) {
             uuidReverseBuf[i] = uuidBuf[uuidBuf.length - i - 1];
         }
-        var advDataBuf = Buffer.concat([typeBuf, uuidReverseBuf]);
+        var nullBuf = new Buffer([0, 0, 0, 0]);
+        var advDataBuf = Buffer.concat([typeBuf, uuidReverseBuf, nullBuf]);
         var len = advDataBuf.length;
         // console.log("Length of adv data: " + len);
         var lenBuf = new Buffer(1);
