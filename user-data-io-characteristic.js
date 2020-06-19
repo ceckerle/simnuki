@@ -779,10 +779,37 @@ UserSpecificDataInputOutputCharacteristic.prototype.onWriteRequest = function (d
                                 console.log("Don't have nonceK - ignoring command");
                             }
                             break;
+                        case nukiConstants.CMD_REQUEST_ADVANCED_CONFIG:
+                            console.log("CL sent CMD_REQUEST_ADVANCED_CONFIG");
+                            nonce = payload;
+                            console.log("Nonce", nonce, nonce.length);
+
+                            const advConfig = Buffer.alloc(28);
+                            this.prepareEncryptedDataToSend(nukiConstants.CMD_ADVANCED_CONFIG, authorizationId, nonceABF, sharedSecret, advConfig);
+                            while (this.dataStillToSend.length > 0) {
+                                value = this.getNextChunk(this.dataStillToSend);
+                                if (this._updateValueCallback && value.length > 0) {
+                                    this._updateValueCallback(value);
+                                }
+                            }
+                            break;
+                        case nukiConstants.CMD_SET_ADVANCED_CONFIG:
+                            console.log("CL sent CMD_SET_ADVANCED_CONFIG");
+                            nonce = payload.slice(26, 26 + 32);
+                            if (Buffer.compare(this.nonceK, nonce) === 0) {
+                                this.sendStatusEncrypted(authorizationId, nonceABF, sharedSecret, nukiConstants.STATUS_COMPLETE);
+                            } else {
+                                console.log("ERROR: nonce differ");
+                                console.log("nonceK", this.nonceK);
+                                console.log("nonceABF", nonceABF);
+                                this.sendError(nukiConstants.K_ERROR_BAD_NONCE, cmdId);
+                            }
+                            break;
                         default:
                             console.log("COMMAND NOT IMPLEMENTED: 0x" + cmdIdBuf.toString('hex'));
                             console.log("decrypted message: ", decryptedMessge);
                             console.log("payload", payload);
+                            this.sendError(nukiConstants.ERROR_UNKNOWN, cmdId);
                     }
                     callback(this.RESULT_SUCCESS);
                 } else {

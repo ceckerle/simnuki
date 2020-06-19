@@ -21,6 +21,10 @@ module.exports.CMD_REQUEST_CALIBRATION = 0x1A;
 module.exports.CMD_SET_PIN = 0x19;
 module.exports.CMD_VERIFY_PIN = 0x20;
 module.exports.CMD_UPDATE_TIME = 0x21;
+module.exports.CMD_SET_ADVANCED_CONFIG = 0x35;
+module.exports.CMD_REQUEST_ADVANCED_CONFIG = 0x36;
+module.exports.CMD_ADVANCED_CONFIG = 0x37;
+
 
 module.exports.STATUS_COMPLETE = 0x00;
 module.exports.STATUS_ACCEPTED = 0x01;
