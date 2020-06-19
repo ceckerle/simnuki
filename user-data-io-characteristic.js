@@ -5,7 +5,7 @@ var _ = require('underscore');
 var sodium = require('sodium');
 var sleep = require('sleep');	//hmk
 
-var bleno = require('bleno');
+var bleno = require('@abandonware/bleno');
 var BlenoCharacteristic = bleno.Characteristic;
 var BlenoDescriptor = bleno.Descriptor;
 

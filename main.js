@@ -2,7 +2,7 @@ var _ = require('underscore');
 var fs = require('fs');
 var path = require('path');
 var nconf = require('nconf');
-var bleno = require('bleno');
+var bleno = require('@abandonware/bleno');
 var sodium = require('sodium');
 var uuid = require('uuid');
 

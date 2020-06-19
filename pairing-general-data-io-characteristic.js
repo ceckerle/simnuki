@@ -6,7 +6,7 @@ var sodium = require('sodium');
 var HSalsa20 = require('./hsalsa20');
 var crypto = require('crypto');
 
-var bleno = require('bleno');
+var bleno = require('@abandonware/bleno');
 var BlenoCharacteristic = bleno.Characteristic;
 var BlenoDescriptor = bleno.Descriptor;
 

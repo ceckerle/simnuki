@@ -1,6 +1,6 @@
 var util = require('util');
 
-var bleno = require('bleno');
+var bleno = require('@abandonware/bleno');
 var BlenoCharacteristic = bleno.Characteristic;
 var BlenoDescriptor = bleno.Descriptor;
 
