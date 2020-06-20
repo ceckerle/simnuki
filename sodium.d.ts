@@ -1,12 +1,16 @@
 declare module "sodium" {
 
-    class KeyPair {
+    class CryptoBaseBuffer {
+        get(): Buffer;
+    }
 
+    class KeyPair {
+        pk(): CryptoBaseBuffer;
+        sk(): CryptoBaseBuffer;
     }
 
     class DHKey extends KeyPair {
         constructor(publicKey?: any, secretKey?: any, encoding?: string);
-
     }
 
     interface Sodium {

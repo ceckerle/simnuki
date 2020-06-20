@@ -1,14 +1,28 @@
-// @ts-ignore
 import {crc16ccitt} from "crc";
 import {DataIoCharacteristic} from "./DataIoCharacteristic";
-// @ts-ignore
-import {crcOk, CMD_REQUEST_DATA, CMD_ID_PUBLIC_KEY, CMD_CHALLENGE, CMD_AUTHORIZATION_AUTHENTICATOR, CMD_AUTHORIZATION_DATA, CMD_AUTHORIZATION_ID, CMD_AUTHORIZATION_ID_CONFIRMATION, CMD_STATUS, CMD_ERROR, NUKI_NONCEBYTES, STATUS_COMPLETE, ERROR_UNKNOWN, ERROR_BAD_CRC, ERROR_BAD_LENGTH, P_ERROR_BAD_AUTHENTICATOR} from "./nuki-constants";
+import {
+    crcOk,
+    CMD_REQUEST_DATA,
+    CMD_ID_PUBLIC_KEY,
+    CMD_CHALLENGE,
+    CMD_AUTHORIZATION_AUTHENTICATOR,
+    CMD_AUTHORIZATION_DATA,
+    CMD_AUTHORIZATION_ID,
+    CMD_AUTHORIZATION_ID_CONFIRMATION,
+    CMD_STATUS,
+    CMD_ERROR,
+    NUKI_NONCEBYTES,
+    STATUS_COMPLETE,
+    ERROR_UNKNOWN,
+    ERROR_BAD_CRC,
+    ERROR_BAD_LENGTH,
+    P_ERROR_BAD_AUTHENTICATOR,
+    PAIRING_GDIO_CHARACTERISTIC_UUID
+} from "./Constants";
 import * as sodium from "sodium";
-// @ts-ignore
-import * as HSalsa20 from "./hsalsa20";
 import {createHmac} from "crypto";
-// @ts-ignore
 import * as _ from "underscore";
+import {HSalsa20} from "./HSalsa20";
 
 type PairingState = PairingStateInitial|PairingStatePublicKeySent|PairingStateChallengeSent|PairingStateChallenge2Sent|PairingStateAuthorizationIdSent;
 
@@ -50,10 +64,11 @@ export class PairingCharacteristic extends DataIoCharacteristic {
     private serverPrivateKey: Buffer;
     private serverPublicKey: Buffer;
 
-    constructor(keys: {slPk: Buffer, slSk: Buffer}, private config: any) {
-        super("a92ee101550111e4916c0800200c9a66");
-        this.serverPrivateKey = keys.slSk;
-        this.serverPublicKey = keys.slPk;
+    constructor(private config: any) {
+        super(PAIRING_GDIO_CHARACTERISTIC_UUID);
+        const key = new sodium.Key.ECDH();
+        this.serverPrivateKey = key.sk().get();
+        this.serverPublicKey = key.pk().get();
     }
 
     async handleRequest(data: Buffer): Promise<Buffer> {
@@ -186,7 +201,7 @@ export class PairingCharacteristic extends DataIoCharacteristic {
 
                     const users = this.config.get("users") || {};
 
-                    var user = _.findWhere(users, {name: name});
+                    var user = _.findWhere(users, {name: name}) as any;
                     if (user) {
                         newAuthorizationId = user.authorizationId;
                     } else {

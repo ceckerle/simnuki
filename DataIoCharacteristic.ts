@@ -79,7 +79,6 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
             const sendLength = Math.min(remaining, this.subscriptionLimit);
             const sendData = this.pendingIndicationData.subarray(this.pendingIndicationOffset, this.pendingIndicationOffset + sendLength);
             console.log("sending " + sendData.toString("hex"));
-            // @ts-ignore
             this.subscriptionCallback(sendData);
             this.pendingIndicationOffset += sendLength;
         } else {

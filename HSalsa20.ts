@@ -1,31 +1,25 @@
-var _ = require('underscore');
-
-var hsalsa20 = module.exports = function () {
-};
-
-
 // near clone of Java's casting of integers to bytes
 // warning: doesn't handle negative integers properly
-function toByte(i) {
+function toByte(i: number) {
     return ((i + 128) % 256) - 128;
 }
 
-_.extend(hsalsa20.prototype, {
+export class HSalsa20 {
 
-    ROUNDS: 20,
+    static ROUNDS = 20;
 
-    rotate: function (u, c) {
+    rotate(u: number, c: number) {
         return (u << c) | (u >>> (32 - c));
-    },
+    }
 
-    load_littleendian: function (x, offset) {
-        return (parseInt(x[offset]) & 0xff) |
-            (((parseInt(x[offset + 1]) & 0xff)) << 8) |
-            (((parseInt(x[offset + 2]) & 0xff)) << 16) |
-            (((parseInt(x[offset + 3]) & 0xff)) << 24);
-    },
+    load_littleendian(x: Buffer, offset: number) {
+        return (x[offset] & 0xff) |
+            (((x[offset + 1] & 0xff)) << 8) |
+            (((x[offset + 2] & 0xff)) << 16) |
+            (((x[offset + 3] & 0xff)) << 24);
+    }
 
-    store_littleendian: function (x, offset, u) {
+    store_littleendian(x: Buffer, offset: number, u: number) {
         x[offset] = toByte(u);
         u >>>= 8;
         x[offset + 1] = toByte(u);
@@ -33,9 +27,9 @@ _.extend(hsalsa20.prototype, {
         x[offset + 2] = toByte(u);
         u >>>= 8;
         x[offset + 3] = toByte(u);
-    },
+    }
 
-    crypto_core: function (outv, inv, k, c) {
+    crypto_core(outv: Buffer, inv: Buffer, k: Buffer, c: Buffer) {
         var x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15;
         var j0, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15;
         var i;
@@ -64,7 +58,7 @@ _.extend(hsalsa20.prototype, {
         j14 = x14 = this.load_littleendian(k, 28);
         j15 = x15 = this.load_littleendian(c, 12);
 
-        for (i = this.ROUNDS; i > 0; i -= 2) {
+        for (i = HSalsa20.ROUNDS; i > 0; i -= 2) {
             x4 ^= this.rotate(x0 + x12, 7);
             x8 ^= this.rotate(x4 + x0, 9);
             x12 ^= this.rotate(x8 + x4, 13);
@@ -140,51 +134,4 @@ _.extend(hsalsa20.prototype, {
         return 0;
     }
 
-});
-
-// Helpers
-// -------
-
-// Helper function to correctly set up the prototype chain, for subclasses.
-// Similar to `goog.inherits`, but uses a hash of prototype properties and
-// class properties to be extended.
-var extend = function (protoProps, staticProps) {
-    var parent = this;
-    var child;
-
-    // The constructor function for the new subclass is either defined by you
-    // (the "constructor" property in your `extend` definition), or defaulted
-    // by us to simply call the parent's constructor.
-    if (protoProps && _.has(protoProps, 'constructor')) {
-        child = protoProps.constructor;
-    } else {
-        child = function () {
-            return parent.apply(this, arguments);
-        };
-    }
-
-    // Add static properties to the constructor function, if supplied.
-    _.extend(child, parent, staticProps);
-
-    // Set the prototype chain to inherit from `parent`, without calling
-    // `parent`'s constructor function.
-    var Surrogate = function () {
-        this.constructor = child;
-    };
-    Surrogate.prototype = parent.prototype;
-    child.prototype = new Surrogate();
-
-    // Add prototype properties (instance properties) to the subclass,
-    // if supplied.
-    if (protoProps) {
-        _.extend(child.prototype, protoProps);
-    }
-
-    // Set a convenience property in case the parent's prototype is needed
-    // later.
-    child.__super__ = parent.prototype;
-
-    return child;
-};
-
-hsalsa20.extend = extend;
+}

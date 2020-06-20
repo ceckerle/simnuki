@@ -1,7 +1,32 @@
 import {DataIoCharacteristic} from "./DataIoCharacteristic";
-// @ts-ignore
-import {crcOk, CMD_REQUEST_DATA, CMD_CHALLENGE, CMD_REQUEST_CONFIG, CMD_CONFIG, CMD_SET_CONFIG, CMD_SET_PIN, CMD_NUKI_STATES, CMD_VERIFY_PIN, CMD_STATUS, CMD_REQUEST_CALIBRATION, CMD_REQUEST_ADVANCED_CONFIG, CMD_ADVANCED_CONFIG, CMD_UPDATE_TIME, CMD_LOCK_ACTION, CMD_AUTHORIZATION_DATA_INVITE, CMD_REMOVE_AUTHORIZATION_ENTRY, CMD_ERROR, NUKI_NONCEBYTES, STATUS_COMPLETE, STATUS_ACCEPTED, ERROR_UNKNOWN, K_ERROR_BAD_NONCE, K_ERROR_BAD_PIN, K_ERROR_BAD_PARAMETER} from "./nuki-constants";
-// @ts-ignore
+import {
+    crcOk,
+    CMD_REQUEST_DATA,
+    CMD_CHALLENGE,
+    CMD_REQUEST_CONFIG,
+    CMD_CONFIG,
+    CMD_SET_CONFIG,
+    CMD_SET_PIN,
+    CMD_NUKI_STATES,
+    CMD_VERIFY_PIN,
+    CMD_STATUS,
+    CMD_REQUEST_CALIBRATION,
+    CMD_REQUEST_ADVANCED_CONFIG,
+    CMD_ADVANCED_CONFIG,
+    CMD_UPDATE_TIME,
+    CMD_LOCK_ACTION,
+    CMD_AUTHORIZATION_DATA_INVITE,
+    CMD_REMOVE_AUTHORIZATION_ENTRY,
+    CMD_ERROR,
+    NUKI_NONCEBYTES,
+    STATUS_COMPLETE,
+    STATUS_ACCEPTED,
+    ERROR_UNKNOWN,
+    K_ERROR_BAD_NONCE,
+    K_ERROR_BAD_PIN,
+    K_ERROR_BAD_PARAMETER,
+    KEYTURNER_USDIO_CHARACTERISTIC_UUID
+} from "./Constants";
 import {crc16ccitt} from "crc";
 import * as sodium from "sodium";
 
@@ -17,14 +42,14 @@ interface KeyturnerStateChallengeSent {
 type KeyturnerState = KeyturnerStateInitial|KeyturnerStateChallengeSent;
 
 
-export class KeyturnerCharacteristic extends DataIoCharacteristic {
+export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
     private state: KeyturnerState = {
         key: "Initial"
     };
 
     constructor(private config:any) {
-        super("a92ee202550111e4916c0800200c9a66");
+        super(KEYTURNER_USDIO_CHARACTERISTIC_UUID);
     }
 
     async handleRequest(data: Buffer): Promise<Buffer> {

@@ -136,6 +136,8 @@ declare module "@abandonware/bleno" {
         updateRssi(callback?: (err: null, rssi: number) => void): void;
 
         on(event: 'stateChange', cb: (state: State) => void): this;
+        on(event: 'platform', cb: (platform: NodeJS.Platform) => void): this;
+        on(event: 'addressChange', cb: (address: string) => void): this;
         on(event: 'accept', cb: (address: string) => void): this;
         on(event: 'mtuChange', cb: (mtu: number) => void): this;
         on(event: 'disconnect', cb: (clientAddress: string) => void): this;
