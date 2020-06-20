@@ -313,7 +313,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
                 }
                 const transitions = [];
-                switch (lockAction) {
+                switch (action) {
                     case 1: // unlock
                         transitions.push(2);
                         transitions.push(3);
