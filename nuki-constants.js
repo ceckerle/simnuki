@@ -37,6 +37,12 @@ module.exports.ERROR_BAD_CRC = 0xFD;
 module.exports.ERROR_BAD_LENGTH = 0xFE;
 module.exports.ERROR_UNKNOWN = 0xFF;
 
+module.exports.P_ERROR_NOT_PAIRING = 0x10;
+module.exports.P_ERROR_BAD_AUTHENTICATOR = 0x11;
+module.exports.P_ERROR_BAD_PARAMETER = 0x12;
+module.exports.P_ERROR_MAX_USER = 0x13;
+
+
 module.exports.NUKI_NONCEBYTES = 32;
 
 module.exports.crcOk = function (dataTocheck) {

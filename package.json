@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./main.js"
+    "start": "node ./main.js",
+    "build": "tsc -p ."
   },
   "dependencies": {
     "@abandonware/bleno": "^0.5.1-2",
@@ -14,5 +15,9 @@
     "sodium": "^3.0.2",
     "underscore": "^1.10.2",
     "uuid": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^12.12.47",
+    "typescript": "^3.9.5"
   }
 }
