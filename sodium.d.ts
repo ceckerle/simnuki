@@ -16,6 +16,8 @@ declare module "sodium" {
         api: {
             crypto_scalarmult: (n: Buffer, p: Buffer) => Buffer;
             randombytes_buf: (b: Buffer) => void;
+            crypto_secretbox_open: (a: Buffer, b: Buffer, c: Buffer) => Buffer;
+            crypto_secretbox: (a: Buffer, b: Buffer, c: Buffer) => Buffer;
         }
     }
 

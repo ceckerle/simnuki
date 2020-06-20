@@ -2,6 +2,8 @@ import * as bleno from "@abandonware/bleno"
 
 export abstract class DataIoCharacteristic extends bleno.Characteristic {
 
+    private pendingIndicationPromise: Promise<void> = Promise.resolve();
+    private pendingIndicationPromiseResolve: () => void = () => undefined;
     private pendingIndicationData: Buffer = Buffer.alloc(0);
     private pendingIndicationOffset: number = 0;
     private subscriptionCallback?: (data: Buffer) => void;
@@ -28,9 +30,7 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
             callback(this.RESULT_SUCCESS);
             this.handleRequest(data).then((data) => {
                 console.log("will send " + data.toString("hex"));
-                this.pendingIndicationData = data;
-                this.pendingIndicationOffset = 0;
-                this.processPendingIndication();
+                this.sendIndication(data);
             }, (error) => {
                 console.log("handleRequest failure", error);
             });
@@ -53,7 +53,18 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
         }, 0);
     }
 
-    abstract handleRequest(data: Buffer): Promise<Buffer>;
+    protected abstract handleRequest(data: Buffer): Promise<Buffer>;
+
+    protected async sendIndication(data: Buffer): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.pendingIndicationPromise.finally(() => {
+                this.pendingIndicationPromiseResolve = resolve;
+                this.pendingIndicationData = data;
+                this.pendingIndicationOffset = 0;
+                this.processPendingIndication();
+            })
+        });
+    }
 
     private processPendingIndication() {
         const remaining = this.pendingIndicationData.length - this.pendingIndicationOffset;
@@ -62,6 +73,8 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
             if (!this.subscriptionCallback || !this.subscriptionLimit) {
                 console.log("no subscription, dropping indication");
                 this.pendingIndicationOffset = this.pendingIndicationData.length;
+                this.processPendingIndication();
+                return;
             }
             const sendLength = Math.min(remaining, this.subscriptionLimit);
             const sendData = this.pendingIndicationData.subarray(this.pendingIndicationOffset, this.pendingIndicationOffset + sendLength);
@@ -69,6 +82,8 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
             // @ts-ignore
             this.subscriptionCallback(sendData);
             this.pendingIndicationOffset += sendLength;
+        } else {
+            this.pendingIndicationPromiseResolve();
         }
     }
 
