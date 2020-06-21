@@ -1,4 +1,5 @@
 import * as bleno from "@abandonware/bleno"
+import {CMD_ERROR, setCrc} from "./Protocol";
 
 export abstract class DataIoCharacteristic extends bleno.Characteristic {
 
@@ -23,13 +24,13 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
     }
 
     onWriteRequest(data: Buffer, offset: number, withoutResponse: boolean, callback: (result: number) => void): void {
-        console.log(`onWriteRequest ${data.toString("hex")} ${offset} ${withoutResponse}`);
+        // console.log(`onWriteRequest ${data.toString("hex")} ${offset} ${withoutResponse}`);
         if (offset) {
             callback(this.RESULT_ATTR_NOT_LONG);
         } else {
             callback(this.RESULT_SUCCESS);
             this.handleRequest(data).then((data) => {
-                console.log("will send " + data.toString("hex"));
+                // console.log("will send " + data.toString("hex"));
                 this.sendIndication(data);
             }, (error) => {
                 console.log("handleRequest failure", error);
@@ -66,9 +67,25 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
         });
     }
 
+    protected buildError(code: number, cmd: number, info: string): Buffer {
+        console.log(info);
+        const buf = Buffer.alloc(3);
+        buf.writeUInt8(code, 0)
+        buf.writeUInt16LE(cmd, 1);
+        return this.buildMessage(CMD_ERROR, buf);
+    }
+
+    protected buildMessage(cmd: number, payload: Buffer): Buffer {
+        const cmdBuffer = Buffer.alloc(2);
+        cmdBuffer.writeUInt16LE(cmd, 0);
+        const responseData = Buffer.concat([cmdBuffer, payload, Buffer.alloc(2)]);
+        setCrc(responseData);
+        return responseData;
+    }
+
     private processPendingIndication() {
         const remaining = this.pendingIndicationData.length - this.pendingIndicationOffset;
-        console.log(`processPendingIndication ${this.pendingIndicationOffset}/${this.pendingIndicationData.length}`);
+        // console.log(`processPendingIndication ${this.pendingIndicationOffset}/${this.pendingIndicationData.length}`);
         if (remaining > 0) {
             if (!this.subscriptionCallback || !this.subscriptionLimit) {
                 console.log("no subscription, dropping indication");
@@ -78,7 +95,7 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
             }
             const sendLength = Math.min(remaining, this.subscriptionLimit);
             const sendData = this.pendingIndicationData.subarray(this.pendingIndicationOffset, this.pendingIndicationOffset + sendLength);
-            console.log("sending " + sendData.toString("hex"));
+            // console.log("sending " + sendData.toString("hex"));
             this.subscriptionCallback(sendData);
             this.pendingIndicationOffset += sendLength;
         } else {

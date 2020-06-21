@@ -1,6 +1,6 @@
 import {DataIoCharacteristic} from "./DataIoCharacteristic";
 import {
-    crcOk,
+    checkCrc,
     CMD_REQUEST_DATA,
     CMD_CHALLENGE,
     CMD_REQUEST_CONFIG,
@@ -16,7 +16,6 @@ import {
     CMD_UPDATE_TIME,
     CMD_LOCK_ACTION,
     CMD_REMOVE_AUTHORIZATION_ENTRY,
-    CMD_ERROR,
     NUKI_NONCEBYTES,
     STATUS_COMPLETE,
     STATUS_ACCEPTED,
@@ -42,11 +41,16 @@ import {
     LOCK_STATE_UNLATCHED,
     LOCK_ACTION_UNLATCH,
     LOCK_ACTION_LOCKNGO_WITH_UNLATCH,
-    LOCK_ACTION_FULL_LOCK, LOCK_STATE_UNLOCKING, LOCK_STATE_LOCKING, CMD_FIRMWARE_STATUS
-} from "./Constants";
-import {crc16ccitt} from "crc";
-import * as sodium from "sodium";
+    LOCK_ACTION_FULL_LOCK,
+    LOCK_STATE_UNLOCKING,
+    LOCK_STATE_LOCKING,
+    CMD_FIRMWARE_STATUS,
+    setCrc,
+    readString,
+    writeString
+} from "./Protocol";
 import {Configuration} from "./Configuration";
+import {decrypt, encrypt, random} from "./Crypto";
 
 interface KeyturnerStateInitial {
     key: "Initial"
@@ -90,11 +94,11 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
         const prefixBuff = Buffer.alloc(16);
 
-        const decryptedMessge = sodium.api.crypto_secretbox_open(Buffer.concat([prefixBuff, encryptedMessage]), nonceABF, sharedSecret);
+        const decryptedMessge = decrypt(Buffer.concat([prefixBuff, encryptedMessage]), nonceABF, sharedSecret);
 
-        console.log("decrypted " + decryptedMessge.toString("hex"));
+        // console.log("decrypted " + decryptedMessge.toString("hex"));
 
-        if (!crcOk(decryptedMessge)) {
+        if (!checkCrc(decryptedMessge)) {
             return this.buildError(ERROR_UNKNOWN, 0, "bad crc");
         }
         const authorizationIdFromEncryptedMessage = decryptedMessge.readUInt32LE(0);
@@ -111,8 +115,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 switch (dataId) {
                     case CMD_CHALLENGE:
                         console.log("CL requests challenge");
-                        const challenge = Buffer.alloc(NUKI_NONCEBYTES);
-                        sodium.api.randombytes_buf(challenge);
+                        const challenge = random(NUKI_NONCEBYTES);
                         this.state = {
                             key: "ChallengeSent",
                             challenge
@@ -136,21 +139,12 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 // TODO: check length
                 console.log("CL sent CMD_REQUEST_CONFIG");
                 const nonce = payload.slice(0, 32);
-                console.log("Nonce", nonce.toString("hex"), this.state.challenge.toString("hex"));
+                // console.log("Nonce", nonce.toString("hex"), this.state.challenge.toString("hex"));
 
                 const nukiIdStr = this.config.getNukiIdStr();
                 const nukiId = new Buffer(nukiIdStr, 'hex');
-                let nameStr = this.config.get("name");
-                if (!nameStr) {
-                    nameStr = 'Nuki_' + nukiIdStr;
-                }
-                const nameBuffer = new Buffer(32).fill(' ');
-                const name = new Buffer(nameStr);
-                if (name.length > nameBuffer.length) {
-                    name.copy(nameBuffer, 0, 0, nameBuffer.length);
-                } else {
-                    name.copy(nameBuffer, 0, 0, name.length);
-                }
+                const nameBuffer = new Buffer(32);
+                writeString(nameBuffer, this.config.getName());
                 const latitude = this.config.get("latitude") || 0;
                 const longitude = this.config.get("longitude") || 0;
                 const latBuffer = new Buffer(4);
@@ -207,7 +201,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 }
                 // TODO: check length
                 console.log("CL sent CMD_SET_CONFIG");
-                const setName = payload.slice(0, 32);
+                const setName = readString(payload.slice(0, 32));
                 const setLatitude = payload.readFloatLE(32);
                 const setLongitude = payload.readFloatLE(36);
                 const setAutoUnlatch = payload.readUInt8(40);
@@ -227,7 +221,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                     return this.buildError(K_ERROR_BAD_NONCE, cmdId, "ERROR: nonce differ");
                 }
 
-                this.config.set("name", setName.toString().trim());
+                this.config.set("name", setName);
                 this.config.set("latitude", setLatitude);
                 this.config.set("longitude", setLongitude);
                 this.config.set("autoUnlatch", setAutoUnlatch);
@@ -472,6 +466,13 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
         }
     }
 
+    protected buildError(code: number, cmd: number, info: string): Buffer {
+        this.state = {
+            key: "Initial"
+        };
+        return super.buildError(code, cmd, info);
+    }
+
     private buildStateMessage(authId: number, nonce: Buffer, sharedSecret: Buffer) {
         const nukiState = new Buffer(1);
         nukiState.writeUInt8(this.config.getNukiState(), 0);
@@ -502,40 +503,16 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
         return this.buildEncryptedMessage(CMD_NUKI_STATES, nukiStates, authId, nonce, sharedSecret);
     }
 
-    private buildError(code: number, cmd: number, info: string): Buffer {
-        console.log(info);
-        this.state = {
-            key: "Initial"
-        };
-        const buf = Buffer.alloc(3);
-        buf.writeUInt8(code, 0)
-        buf.writeUInt16LE(cmd, 1);
-        return this.buildMessage(CMD_ERROR, buf);
-    }
-
-    private buildMessage(cmd: number, payload: Buffer): Buffer {
-        const cmdBuffer = Buffer.alloc(2);
-        cmdBuffer.writeUInt16LE(cmd, 0);
-        const responseData = Buffer.concat([cmdBuffer, payload]);
-        const checksum = crc16ccitt(responseData);
-        const checksumBuffer = new Buffer(2);
-        checksumBuffer.writeUInt16LE(checksum, 0);
-        return Buffer.concat([responseData, checksumBuffer]);
-    }
-
     private buildEncryptedMessage(cmd: number, payload: Buffer, authId: number, nonce: Buffer, sharedSecret: Buffer): Buffer {
         const authIdBuffer = Buffer.alloc(4);
         authIdBuffer.writeUInt32LE(authId, 0);
         const cmdBuffer = Buffer.alloc(2);
         cmdBuffer.writeUInt16LE(cmd, 0);
-        const responseData = Buffer.concat([authIdBuffer, cmdBuffer, payload]);
-        const checksum = crc16ccitt(responseData);
-        const checksumBuffer = new Buffer(2);
-        checksumBuffer.writeUInt16LE(checksum, 0);
-        const unencrypted = Buffer.concat([responseData, checksumBuffer]);
-        console.log("will encrypt", unencrypted.toString("hex"), unencrypted.length);
+        const responseData = Buffer.concat([authIdBuffer, cmdBuffer, payload, Buffer.alloc(2)]);
+        setCrc(responseData);
+        //console.log("will encrypt", responseData.toString("hex"), responseData.length);
 
-        const pDataEncrypted = sodium.api.crypto_secretbox(unencrypted, nonce, sharedSecret).slice(16); // skip first 16 bytes
+        const pDataEncrypted = encrypt(responseData, nonce, sharedSecret);
 
         const lenBuffer = new Buffer(2);
         lenBuffer.writeUInt16LE(pDataEncrypted.length, 0);

@@ -4,7 +4,7 @@ import {PairingService} from "./PairingService";
 import {KeyturnerService} from "./KeyturnerService";
 import {Advertiser} from "./Advertiser";
 import {Configuration} from "./Configuration";
-import {NUKI_STATE_DOOR_MODE, NUKI_STATE_PAIRING_MODE, NUKI_STATE_UNINITIALIZED} from "./Constants";
+import {NUKI_STATE_DOOR_MODE, NUKI_STATE_PAIRING_MODE, NUKI_STATE_UNINITIALIZED} from "./Protocol";
 
 const config = new Configuration();
 

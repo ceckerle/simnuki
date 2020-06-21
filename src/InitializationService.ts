@@ -1,5 +1,5 @@
 import * as bleon from "@abandonware/bleno"
-import {INITIALIZATION_SERVICE_UUID} from "./Constants";
+import {INITIALIZATION_SERVICE_UUID} from "./Protocol";
 
 export class InitializationService extends bleon.PrimaryService {
 

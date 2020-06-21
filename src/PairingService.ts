@@ -1,6 +1,6 @@
 import * as bleno from "@abandonware/bleno"
 import {PairingCharacteristic} from "./PairingCharacteristic";
-import {PAIRING_SERVICE_UUID} from "./Constants";
+import {PAIRING_SERVICE_UUID} from "./Protocol";
 import {Configuration} from "./Configuration";
 
 export class PairingService extends bleno.PrimaryService {

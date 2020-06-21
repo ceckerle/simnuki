@@ -2,8 +2,8 @@ import * as nconf from "nconf";
 import {Provider} from "nconf";
 import * as _ from "underscore";
 import * as uuid from "uuid";
-import * as sodium from "sodium";
-import {LOCK_STATE_UNCALIBRATED, NUKI_STATE_UNINITIALIZED} from "./Constants";
+import {LOCK_STATE_UNCALIBRATED, NUKI_STATE_UNINITIALIZED} from "./Protocol";
+import {random} from "./Crypto";
 
 export interface User {
     authorizationId: number,
@@ -32,9 +32,9 @@ export class Configuration {
             const arrUUID = new Array(16);
             uuid.v1(null, arrUUID);
             this.config.set('uuid', new Buffer(arrUUID).toString('hex'));
-            const nukiSerial = Buffer.alloc(4);
-            sodium.api.randombytes_buf(nukiSerial);
-            this.config.set('nukiId', nukiSerial.toString('hex').toUpperCase());
+            const nukiId = random(4).toString("hex").toUpperCase();
+            this.config.set('nukiId', nukiId);
+            this.config.set('name', "Nuki_" + nukiId);
             this.config.set('nukiState', NUKI_STATE_UNINITIALIZED);
             this.config.set("lockState", LOCK_STATE_UNCALIBRATED);
             // TODO: init async
@@ -53,11 +53,19 @@ export class Configuration {
         return this.get("uuid");
     }
 
+    public getName(): string {
+        return this.get("name");
+    }
+
+    public setName(name: string):void {
+        this.set("name", name);
+    }
+
     public getNukiState(): number {
         return this.get("nukiState");
     }
 
-    public setNukiState(state: number) {
+    public setNukiState(state: number): void {
         this.set("nukiState", state);
     }
 
@@ -65,8 +73,47 @@ export class Configuration {
         return this.get("lockState");
     }
 
-    public setLockState(state: number) {
+    public setLockState(state: number): void {
         return this.set("lockState", state);
+    }
+
+    public getUsers(): {[authorizationId: string]: User} {
+        return this.get("users");
+    }
+
+    public getUsersArray(): User[] {
+        const users = this.getUsers();
+        const usersArray = Object.getOwnPropertyNames(users).map((authId) => users[authId]);
+        usersArray.sort((a, b) => a.authorizationId - b.authorizationId);
+        return usersArray;
+    }
+
+    public getUser(authorizationId: number): User|undefined {
+        return this.getUsers()[authorizationId];
+    }
+
+    public getNextAuthorizationId(): number {
+        const users = this.getUsers();
+        return Object.getOwnPropertyNames(users)
+            .map((authId) => users[authId].authorizationId)
+            .reduce((max, authId) => Math.max(max, authId), 0) + 1;
+    }
+
+    public addOrReplaceUser(user: User): number {
+        const users = this.getUsers();
+        this.set("users", {
+            ...users,
+            [user.authorizationId]: user
+        });
+        return user.authorizationId;
+    }
+
+    public removeUser(authorizationId: number): void {
+        const users = {
+            ...this.getUsers()
+        };
+        delete users[authorizationId];
+        this.set("users", users);
     }
 
     public get(key: string): any {

@@ -1,5 +1,5 @@
 import {DataIoCharacteristic} from "./DataIoCharacteristic";
-import {KEYTURNER_GDIO_CHARACTERISTIC_UUID} from "./Constants";
+import {ERROR_UNKNOWN, KEYTURNER_GDIO_CHARACTERISTIC_UUID} from "./Protocol";
 
 export class KeyturnerGeneralCharacteristic extends DataIoCharacteristic {
 
@@ -8,9 +8,8 @@ export class KeyturnerGeneralCharacteristic extends DataIoCharacteristic {
     }
 
     protected async handleRequest(data: Buffer): Promise<Buffer> {
-        console.log("TODO " + data.toString("hex"));
         // TODO: implement
-        return Buffer.alloc(0);
+        return this.buildError(ERROR_UNKNOWN, 0, `Unexpected command on keyturner general characteristic ${data.toString("hex")}`);
     }
 
 }

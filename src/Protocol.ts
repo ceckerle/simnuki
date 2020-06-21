@@ -1,7 +1,5 @@
 import {crc16ccitt} from "crc";
 
-// Nuki protocol constants
-
 export const INITIALIZATION_SERVICE_UUID = "a92ee000-5501-11e4-916c-0800200c9a66";
 export const PAIRING_SERVICE_UUID = "a92ee100-5501-11e4-916c-0800200c9a66";
 export const PAIRING_GDIO_CHARACTERISTIC_UUID = "a92ee101-5501-11e4-916c-0800200c9a66";
@@ -87,10 +85,34 @@ export const LOCK_ACTION_FOB_ACTION_1 = 0x81;
 export const LOCK_ACTION_FOB_ACTION_2 = 0x82;
 export const LOCK_ACTION_FOB_ACTION_3 = 0x83;
 
-export function crcOk(dataTocheck: Buffer): boolean {
-    const dataForCrc = dataTocheck.slice(0, dataTocheck.length - 2);
+export function checkCrc(data: Buffer): boolean {
+    const dataForCrc = data.slice(0, data.length - 2);
     const crcSumCalc = crc16ccitt(dataForCrc);
-    const crcSumRetrieved = dataTocheck.readUInt16LE(dataTocheck.length - 2);
+    const crcSumRetrieved = data.readUInt16LE(data.length - 2);
     return crcSumCalc === crcSumRetrieved;
 }
 
+export function setCrc(data: Buffer): void {
+    const dataForCrc = data.slice(0, data.length - 2);
+    const crc = crc16ccitt(dataForCrc);
+    data.writeUInt16LE(crc, data.length - 2);
+}
+
+export function readString(data: Buffer): string {
+    const str = data.toString("utf-8");
+    const idx = str.indexOf("\0");
+    return idx > -1 ? str.substring(0, idx) : str;
+}
+
+export function writeString(data: Buffer, str: string): void {
+    data.fill(0);
+    let ofs = 0;
+    for (let i = 0; i < str.length; i++) {
+        const bytes = new Buffer(str.charAt(i), "utf-8");
+        if (data.length - ofs < bytes.length) {
+            break;
+        }
+        bytes.copy(data, ofs);
+        ofs += bytes.length;
+    }
+}

@@ -1,5 +1,5 @@
 import * as bleno from "@abandonware/bleno";
-import {PAIRING_SERVICE_UUID} from "./Constants";
+import {PAIRING_SERVICE_UUID} from "./Protocol";
 
 export class Advertiser {
 
