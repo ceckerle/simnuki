@@ -4,10 +4,10 @@ import * as nconf from "nconf";
 import * as bleno from "@abandonware/bleno";
 import * as sodium from "sodium";
 import * as uuid from "uuid";
-import {PAIRING_SERVICE_UUID} from "./Constants";
 import {InitializationService} from "./InitializationService";
 import {PairingService} from "./PairingService";
 import {KeyturnerService} from "./KeyturnerService";
+import {Advertiser} from "./Advertiser";
 
 var config = new nconf.Provider({
     env: true,
@@ -42,66 +42,8 @@ if (!(strUuid && _.isString(strUuid) && strUuid.length === 32)) {
 
 process.env['BLENO_DEVICE_NAME'] = 'Nuki_' + nukiIdStr;
 
-
-bleno.on('stateChange', function (state) {
-    console.log('on -> stateChange: ' + state);
-
-    if (state === 'poweredOn') {
-        // bleno.startAdvertising('SimNuki', [keyturnerPairingService.uuid]);
-
-        bleno.updateRssi(function (err, rssi) {
-            if (err) {
-                console.log("ERROR: RSSI update failed", err);
-            } else {
-                console.log("RSSI updated", rssi);
-            }
-        });
-
-        // EIR data consists of multiple messages in the format:
-        //  len (including command byte)
-        //  data type (see https://www.bluetooth.com/specifications/assigned-numbers/Generic-Access-Profile)
-        //  message data
-
-        var preBuf = new Buffer("020106", 'hex'); // data type 0x01 means flags (LE General Discoverable Mode, BR/EDR Not Supported (i.e. bit 37 of LMP Extended Feature bits Page 0)
-
-        var typeBuf = new Buffer([0x21]);   // data type 0x21 means "Service Data - 128-bit UUID"
-        var uuidBuf = new Buffer(PAIRING_SERVICE_UUID.replace(/-/g, ""), 'hex');
-        // console.log("Length of uuid: " + uuidBuf.length);
-        var uuidReverseBuf = Buffer.alloc(uuidBuf.length);
-        for (var i = 0; i < uuidReverseBuf.length; i++) {
-            uuidReverseBuf[i] = uuidBuf[uuidBuf.length - i - 1];
-        }
-        var nullBuf = new Buffer([0, 0, 0, 0]);
-        var advDataBuf = Buffer.concat([typeBuf, uuidReverseBuf, nullBuf]);
-        var len = advDataBuf.length;
-        // console.log("Length of adv data: " + len);
-        var lenBuf = Buffer.alloc(1);
-        lenBuf.writeUInt8(len, 0);
-
-
-        var advBuf = Buffer.concat([preBuf, lenBuf, advDataBuf]);
-
-        var completeLocalName = 'Nuki_' + nukiIdStr;
-        var completeLocalNameBuf = new Buffer(completeLocalName, 'ascii');
-        var localNamePrefixBuf = Buffer.alloc(2);
-        localNamePrefixBuf.writeUInt8(completeLocalNameBuf.length + 1, 0);
-        localNamePrefixBuf.writeUInt8(0x09, 1); // data type 0x09 means "Complete Local Name"
-        var scanDataBuf = Buffer.concat([localNamePrefixBuf, completeLocalNameBuf]);
-        // console.log("Advertising with ", advBuf);
-        // console.log("Scan data ", scanDataBuf);
-        bleno.startAdvertisingWithEIRData(advBuf, scanDataBuf, function (err) {
-            if (err) {
-                console.log("ERROR: startAdvertisingWithEIRData failed:", err);
-            }
-        });
-    } else {
-        bleno.stopAdvertising();
-    }
-});
-
-bleno.on('advertisingStart', function (error) {
-    console.log('on -> advertisingStart: ' + (error ? 'error ' + error : 'success'));
-});
+const advertiser = new Advertiser(nukiIdStr);
+advertiser.init();
 
 bleno.on('accept', function (address) {
     console.log('on -> accept: ' + address);
