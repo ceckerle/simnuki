@@ -3,6 +3,7 @@ import {Provider} from "nconf";
 import * as _ from "underscore";
 import * as uuid from "uuid";
 import * as sodium from "sodium";
+import {LOCK_STATE_UNCALIBRATED, NUKI_STATE_UNINITIALIZED} from "./Constants";
 
 export interface User {
     authorizationId: number,
@@ -34,7 +35,8 @@ export class Configuration {
             const nukiSerial = Buffer.alloc(4);
             sodium.api.randombytes_buf(nukiSerial);
             this.config.set('nukiId', nukiSerial.toString('hex').toUpperCase());
-            this.config.set('nukiState', 0); // not initialized
+            this.config.set('nukiState', NUKI_STATE_UNINITIALIZED);
+            this.config.set("lockState", LOCK_STATE_UNCALIBRATED);
             // TODO: init async
             this.save().then(() => console.log("Initial configuration saved"),
                 (err) => console.log("Writing initial configuration failed", err));
@@ -49,6 +51,22 @@ export class Configuration {
 
     public getUuid(): string {
         return this.get("uuid");
+    }
+
+    public getNukiState(): number {
+        return this.get("nukiState");
+    }
+
+    public setNukiState(state: number) {
+        this.set("nukiState", state);
+    }
+
+    public getLockState(): number {
+        return this.get("lockState");
+    }
+
+    public setLockState(state: number) {
+        return this.set("lockState", state);
     }
 
     public get(key: string): any {

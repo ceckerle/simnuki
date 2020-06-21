@@ -24,7 +24,25 @@ import {
     K_ERROR_BAD_NONCE,
     K_ERROR_BAD_PIN,
     K_ERROR_BAD_PARAMETER,
-    KEYTURNER_USDIO_CHARACTERISTIC_UUID
+    KEYTURNER_USDIO_CHARACTERISTIC_UUID,
+    NUKI_STATE_DOOR_MODE,
+    LOCK_ACTION_FOB_ACTION_1,
+    LOCK_ACTION_FOB_ACTION_2,
+    LOCK_ACTION_FOB_ACTION_3,
+    FOB_ACTION_LOCK,
+    FOB_ACTION_UNLOCK,
+    LOCK_ACTION_UNLOCK,
+    LOCK_ACTION_LOCK,
+    FOB_ACTION_LOCKNGO,
+    LOCK_ACTION_LOCKNGO,
+    FOB_ACTION_INTELLIGENT,
+    FOB_ACTION_NONE,
+    LOCK_STATE_LOCKED,
+    LOCK_STATE_UNLOCKED,
+    LOCK_STATE_UNLATCHED,
+    LOCK_ACTION_UNLATCH,
+    LOCK_ACTION_LOCKNGO_WITH_UNLATCH,
+    LOCK_ACTION_FULL_LOCK, LOCK_STATE_UNLOCKING, LOCK_STATE_LOCKING
 } from "./Constants";
 import {crc16ccitt} from "crc";
 import * as sodium from "sodium";
@@ -247,7 +265,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                         return this.buildError(K_ERROR_BAD_PIN, cmdId, "ERROR: pin not ok. Saved: " + savedPin + ", given: " + pin);
                     }
                 } else {
-                    this.config.set('nukiState', 2); // door mode
+                    this.config.setNukiState(NUKI_STATE_DOOR_MODE); // TODO: why?
                     this.state = {
                         key: "Initial"
                     };
@@ -282,29 +300,29 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 const flags = payload.readUInt8(5);
                 // nonce = payload.slice(6, 6 + 32);
                 let action = lockAction;
-                const currentLockState = this.config.get("lockState");
-                if (lockAction === 0x81 || lockAction === 0x82 || lockAction === 0x83) {
+                const currentLockState = this.config.getLockState();
+                if (lockAction === LOCK_ACTION_FOB_ACTION_1 || lockAction === LOCK_ACTION_FOB_ACTION_2 || lockAction === LOCK_ACTION_FOB_ACTION_3) {
                     const fobAction = this.config.get(`fobAction${lockAction & 0xf}`);
                     switch (fobAction) {
-                        case 1:
-                            action = 1;
+                        case FOB_ACTION_UNLOCK:
+                            action = LOCK_ACTION_UNLOCK;
                             break;
-                        case 2:
-                            action = 2;
+                        case FOB_ACTION_LOCK:
+                            action = LOCK_ACTION_LOCK;
                             break;
-                        case 3:
-                            action = 4;
+                        case FOB_ACTION_LOCKNGO:
+                            action = LOCK_ACTION_LOCKNGO;
                             break;
-                        case 4:
-                            if (currentLockState === 1) {
-                                action = 1;
+                        case FOB_ACTION_INTELLIGENT:
+                            if (currentLockState === LOCK_STATE_LOCKED) {
+                                action = LOCK_ACTION_UNLOCK;
                             } else {
-                                if (currentLockState === 3 || currentLockState === 5) {
-                                    action = 2;
+                                if (currentLockState === LOCK_STATE_UNLOCKED || currentLockState === LOCK_STATE_UNLATCHED) {
+                                    action = LOCK_ACTION_LOCK;
                                 }
                             }
                             break;
-                        case 0:
+                        case FOB_ACTION_NONE:
                         default:
                             this.state = {
                                 key: "Initial"
@@ -315,36 +333,36 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 }
                 const transitions = [];
                 switch (action) {
-                    case 1: // unlock
-                        transitions.push(2);
-                        transitions.push(3);
+                    case LOCK_ACTION_UNLOCK:
+                        transitions.push(LOCK_STATE_UNLOCKING);
+                        transitions.push(LOCK_STATE_UNLOCKED);
                         break;
-                    case 2: // lock
-                        transitions.push(4);
-                        transitions.push(1);
+                    case LOCK_ACTION_LOCK:
+                        transitions.push(LOCK_STATE_LOCKING);
+                        transitions.push(LOCK_STATE_LOCKED);
                         break;
-                    case 3: // unlatch
-                        transitions.push(2);
-                        transitions.push(3);
-                        transitions.push(5);
-                        transitions.push(3);
+                    case LOCK_ACTION_UNLATCH:
+                        transitions.push(LOCK_STATE_UNLOCKING);
+                        transitions.push(LOCK_STATE_UNLOCKED);
+                        transitions.push(LOCK_STATE_UNLATCHED);
+                        transitions.push(LOCK_STATE_UNLOCKED);
                         break;
-                    case 4: // lock and go
-                        transitions.push(2);
-                        transitions.push(3);
-                        transitions.push(4);
-                        transitions.push(1);
+                    case LOCK_ACTION_LOCKNGO:
+                        transitions.push(LOCK_STATE_UNLOCKING);
+                        transitions.push(LOCK_STATE_UNLOCKED);
+                        transitions.push(LOCK_STATE_LOCKING);
+                        transitions.push(LOCK_STATE_LOCKED);
                         break;
-                    case 5: // lock and go with unlatch
-                        transitions.push(2)
-                        transitions.push(3);
-                        transitions.push(5);
-                        transitions.push(4);
-                        transitions.push(1);
+                    case LOCK_ACTION_LOCKNGO_WITH_UNLATCH:
+                        transitions.push(LOCK_STATE_UNLOCKING)
+                        transitions.push(LOCK_STATE_UNLOCKED);
+                        transitions.push(LOCK_STATE_UNLATCHED);
+                        transitions.push(LOCK_STATE_LOCKING);
+                        transitions.push(LOCK_STATE_LOCKED);
                         break;
-                    case 6: // full lock
-                        transitions.push(4);
-                        transitions.push(1);
+                    case LOCK_ACTION_FULL_LOCK:
+                        transitions.push(LOCK_STATE_LOCKING);
+                        transitions.push(LOCK_STATE_LOCKED);
                         break;
                     default:
                         return this.buildError(K_ERROR_BAD_PARAMETER, cmdId, "ERROR: lock action sent with unknown lock action (" + lockAction + "). Ignoring.");
@@ -356,10 +374,12 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 await this.sleep(2);
 
                 for (const nextState of transitions) {
-                    this.config.set("lockState", nextState);
+                    this.config.setLockState(nextState);
                     await this.sendIndication(this.buildStateMessage(authorizationId, nonceABF, sharedSecret));
                     await this.sleep(1);
                 }
+
+                await this.config.save();
 
                 this.state = {
                     key: "Initial"
@@ -384,6 +404,8 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 await this.sendIndication(this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_ACCEPTED]), authorizationId, nonceABF, sharedSecret));
                 await this.sleep(2);
                 // TODO: calibration status updates
+                this.config.setLockState(LOCK_STATE_LOCKED);
+                await this.config.save();
                 this.state = {
                     key: "Initial"
                 };
@@ -446,11 +468,10 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
     private buildStateMessage(authId: number, nonce: Buffer, sharedSecret: Buffer) {
         const nukiState = new Buffer(1);
-        const nukiStateFromConfig = this.config.get("nukiState");
-        nukiState.writeUInt8(nukiStateFromConfig, 0);
+        nukiState.writeUInt8(this.config.getNukiState(), 0);
 
         const lockState = new Buffer(1);
-        lockState.writeUInt8(this.config.get("lockState") || 1, 0);
+        lockState.writeUInt8(this.config.getLockState(), 0);
 
         const trigger = new Buffer(1);
         trigger.writeUInt8(0, 0);  // bluetooth

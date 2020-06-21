@@ -4,6 +4,7 @@ import {PairingService} from "./PairingService";
 import {KeyturnerService} from "./KeyturnerService";
 import {Advertiser} from "./Advertiser";
 import {Configuration} from "./Configuration";
+import {NUKI_STATE_DOOR_MODE, NUKI_STATE_PAIRING_MODE, NUKI_STATE_UNINITIALIZED} from "./Constants";
 
 const config = new Configuration();
 
@@ -18,26 +19,32 @@ bleno.on('accept', function (address) {
     const keyturnerInitializationService = new InitializationService();
     const keyturnerPairingService = new PairingService(config);
     const keyturnerService = new KeyturnerService(config);
-    const lockState = config.get("lockState");
-    if (lockState > 0) {
-        if (config.get('pairingEnabled') === null || config.get('pairingEnabled') === 1) {
-            console.log("Pairing is enabled");
+    const nukiState = config.getNukiState();
+    switch (nukiState) {
+        case NUKI_STATE_UNINITIALIZED:
+            console.log("Nuki state: uninitialized");
+            bleno.setServices([
+                keyturnerInitializationService,
+                keyturnerPairingService,
+                keyturnerService
+            ]);
+            break;
+        case NUKI_STATE_PAIRING_MODE:
+            console.log("Nuki state: pairing");
             bleno.setServices([
                 keyturnerPairingService,
                 keyturnerService
             ]);
-        } else {
+            break;
+        case NUKI_STATE_DOOR_MODE:
+            console.log("Nuki state: door");
             bleno.setServices([
                 keyturnerService
             ]);
-        }
-    } else {
-        console.log("Nuki is not initialized");
-        bleno.setServices([
-            keyturnerInitializationService,
-            keyturnerPairingService,
-            keyturnerService
-        ]);
+            break;
+        default:
+            bleno.setServices([]);
+            break;
     }
 });
 
