@@ -23,6 +23,7 @@ import * as sodium from "sodium";
 import {createHmac} from "crypto";
 import * as _ from "underscore";
 import {HSalsa20} from "./HSalsa20";
+import {Provider} from "nconf";
 
 type PairingState = PairingStateInitial|PairingStatePublicKeySent|PairingStateChallengeSent|PairingStateChallenge2Sent|PairingStateAuthorizationIdSent;
 
@@ -64,7 +65,7 @@ export class PairingCharacteristic extends DataIoCharacteristic {
     private serverPrivateKey: Buffer;
     private serverPublicKey: Buffer;
 
-    constructor(private config: any) {
+    constructor(private config: Provider) {
         super(PAIRING_GDIO_CHARACTERISTIC_UUID);
         const key = new sodium.Key.ECDH();
         this.serverPrivateKey = key.sk().get();
@@ -109,11 +110,11 @@ export class PairingCharacteristic extends DataIoCharacteristic {
                     return this.buildError(ERROR_BAD_LENGTH, cmd, "bad length");
                 }
                 const clientPublicKey = data.subarray(2, 2 + 32);
-                var k = sodium.api.crypto_scalarmult(this.serverPrivateKey, clientPublicKey);
-                var hsalsa20 = new HSalsa20();
+                const k = sodium.api.crypto_scalarmult(this.serverPrivateKey, clientPublicKey);
+                const hsalsa20 = new HSalsa20();
                 const sharedSecret = Buffer.alloc(32);
-                var inv = Buffer.alloc(16);
-                var c = new Buffer("expand 32-byte k");
+                const inv = Buffer.alloc(16);
+                const c = new Buffer("expand 32-byte k");
                 hsalsa20.crypto_core(sharedSecret, inv, k, c);
                 const challenge = new Buffer(NUKI_NONCEBYTES);
                 sodium.api.randombytes_buf(challenge);
@@ -167,11 +168,11 @@ export class PairingCharacteristic extends DataIoCharacteristic {
                 const clCr = data.slice(2, 34);
 
                 console.log("Step 17: verifying authenticator...");
-                var appType = data.readUInt8(34);
-                var idTypeBuffer = new Buffer([appType]);
-                var appId = data.readUInt32LE(35);
-                var idBuffer = data.slice(35, 35 + 4);
-                var nameBuffer = data.slice(39, 39 + 32);
+                const appType = data.readUInt8(34);
+                const idTypeBuffer = new Buffer([appType]);
+                const appId = data.readUInt32LE(35);
+                const idBuffer = data.slice(35, 35 + 4);
+                const nameBuffer = data.slice(39, 39 + 32);
                 const nonceABF = data.slice(71, 71 + 32);
 
                 // create authenticator for the authorization data message
@@ -194,14 +195,14 @@ export class PairingCharacteristic extends DataIoCharacteristic {
                             break;
                     }
                     console.log("App ID: " + appId);
-                    var name = nameBuffer.toString().trim();
+                    const name = nameBuffer.toString().trim();
                     console.log("Name: " + name);
 
                     let newAuthorizationId = 1;
 
                     const users = this.config.get("users") || {};
 
-                    var user = _.findWhere(users, {name: name}) as any;
+                    const user = _.findWhere(users, {name: name}) as any;
                     if (user) {
                         newAuthorizationId = user.authorizationId;
                     } else {
@@ -222,14 +223,16 @@ export class PairingCharacteristic extends DataIoCharacteristic {
                     };
                     this.config.set("users", users);
 
-                    await this.config.save();
+                    this.config.save(null, (error) => {
+                        // TODO: promise, error handling
+                    });
                     console.log("Step 18: new user " + name + " with authorization id " + newAuthorizationId + " added to configuration");
 
                     console.log("Step 19: creating authorization-id command...");
                     const challenge = Buffer.alloc(NUKI_NONCEBYTES);
                     sodium.api.randombytes_buf(challenge);
 
-                    var newAuthorizationIdBuffer = new Buffer(4);
+                    const newAuthorizationIdBuffer = new Buffer(4);
                     newAuthorizationIdBuffer.writeUInt32LE(newAuthorizationId, 0);
 
                     const uuid = new Buffer(this.config.get("uuid"), "hex");
@@ -237,7 +240,7 @@ export class PairingCharacteristic extends DataIoCharacteristic {
                     // use HMAC-SHA256 to create the authenticator
                     const cr3 = createHmac('SHA256', this.state.sharedSecret).update(r3).digest();
 
-                    var wData = Buffer.concat([cr3, newAuthorizationIdBuffer, uuid, challenge]);
+                    const wData = Buffer.concat([cr3, newAuthorizationIdBuffer, uuid, challenge]);
 
                     this.state = {
                         ...this.state,
@@ -280,9 +283,9 @@ export class PairingCharacteristic extends DataIoCharacteristic {
     private buildMessage(cmd: number, payload: Buffer): Buffer {
         const cmdBuffer = Buffer.alloc(2);
         cmdBuffer.writeUInt16LE(cmd, 0);
-        var responseData = Buffer.concat([cmdBuffer, payload]);
-        var checksum = crc16ccitt(responseData);
-        var checksumBuffer = new Buffer(2);
+        const responseData = Buffer.concat([cmdBuffer, payload]);
+        const checksum = crc16ccitt(responseData);
+        const checksumBuffer = new Buffer(2);
         checksumBuffer.writeUInt16LE(checksum, 0);
         return Buffer.concat([responseData, checksumBuffer]);
     }

@@ -53,7 +53,7 @@ export const P_ERROR_MAX_USER = 0x13;
 
 export const NUKI_NONCEBYTES = 32;
 
-export function crcOk(dataTocheck: Buffer) {
+export function crcOk(dataTocheck: Buffer): boolean {
     const dataForCrc = dataTocheck.slice(0, dataTocheck.length - 2);
     const crcSumCalc = crc16ccitt(dataForCrc);
     const crcSumRetrieved = dataTocheck.readUInt16LE(dataTocheck.length - 2);

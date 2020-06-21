@@ -10,7 +10,7 @@ declare module "sodium" {
     }
 
     class DHKey extends KeyPair {
-        constructor(publicKey?: any, secretKey?: any, encoding?: string);
+        constructor(publicKey?: Buffer, secretKey?: Buffer, encoding?: string);
     }
 
     interface Sodium {

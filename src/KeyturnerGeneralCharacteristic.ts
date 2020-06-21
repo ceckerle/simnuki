@@ -8,6 +8,7 @@ export class KeyturnerGeneralCharacteristic extends DataIoCharacteristic {
     }
 
     protected async handleRequest(data: Buffer): Promise<Buffer> {
+        console.log("TODO " + data.toString("hex"));
         // TODO: implement
         return Buffer.alloc(0);
     }

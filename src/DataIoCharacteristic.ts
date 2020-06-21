@@ -5,9 +5,9 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
     private pendingIndicationPromise: Promise<void> = Promise.resolve();
     private pendingIndicationPromiseResolve: () => void = () => undefined;
     private pendingIndicationData: Buffer = Buffer.alloc(0);
-    private pendingIndicationOffset: number = 0;
+    private pendingIndicationOffset = 0;
     private subscriptionCallback?: (data: Buffer) => void;
-    private subscriptionLimit: number = 0;
+    private subscriptionLimit = 0;
 
     constructor(uuid: string) {
         super({
@@ -22,7 +22,7 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
         });
     }
 
-    onWriteRequest(data: Buffer, offset: number, withoutResponse: boolean, callback: (result: number) => void) {
+    onWriteRequest(data: Buffer, offset: number, withoutResponse: boolean, callback: (result: number) => void): void {
         console.log(`onWriteRequest ${data.toString("hex")} ${offset} ${withoutResponse}`);
         if (offset) {
             callback(this.RESULT_ATTR_NOT_LONG);
@@ -37,17 +37,17 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
         }
     }
 
-    onSubscribe(maxValueSize: number, updateValueCallback: (data: Buffer) => void) {
+    onSubscribe(maxValueSize: number, updateValueCallback: (data: Buffer) => void): void {
         this.subscriptionCallback = updateValueCallback;
         this.subscriptionLimit = maxValueSize;
     }
 
-    onUnsubscribe() {
+    onUnsubscribe(): void {
         this.subscriptionCallback = undefined;
         this.subscriptionLimit = 0;
     }
 
-    onIndicate() {
+    onIndicate(): void {
         setTimeout(() => {
             this.processPendingIndication();
         }, 0);
@@ -56,7 +56,7 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
     protected abstract handleRequest(data: Buffer): Promise<Buffer>;
 
     protected async sendIndication(data: Buffer): Promise<void> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.pendingIndicationPromise.finally(() => {
                 this.pendingIndicationPromiseResolve = resolve;
                 this.pendingIndicationData = data;

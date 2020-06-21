@@ -8,7 +8,7 @@ import {PairingService} from "./PairingService";
 import {KeyturnerService} from "./KeyturnerService";
 import {Advertiser} from "./Advertiser";
 
-var config = new nconf.Provider({
+const config = new nconf.Provider({
     env: true,
     argv: true,
     store: {
@@ -17,13 +17,13 @@ var config = new nconf.Provider({
     }
 });
 
-var strUuid = config.get('uuid');
-var nukiIdStr = config.get('nukiId');
+const strUuid = config.get('uuid');
+let nukiIdStr = config.get('nukiId');
 if (!(strUuid && _.isString(strUuid) && strUuid.length === 32)) {
-    var arrUUID = new Array(16);
+    const arrUUID = new Array(16);
     uuid.v1(null, arrUUID);
     config.set('uuid', new Buffer(arrUUID).toString('hex'));
-    var nukiSerial = Buffer.alloc(4);
+    const nukiSerial = Buffer.alloc(4);
     sodium.api.randombytes_buf(nukiSerial);
     nukiIdStr = nukiSerial.toString('hex').toUpperCase();
     config.set('nukiId', nukiIdStr);
@@ -47,10 +47,10 @@ advertiser.init();
 bleno.on('accept', function (address) {
     console.log('on -> accept: ' + address);
     console.log("Creating new SL key pair...");
-    var keyturnerInitializationService = new InitializationService();
-    var keyturnerPairingService = new PairingService(config);
-    var keyturnerService = new KeyturnerService(config);
-    var lockState = config.get("lockState");
+    const keyturnerInitializationService = new InitializationService();
+    const keyturnerPairingService = new PairingService(config);
+    const keyturnerService = new KeyturnerService(config);
+    const lockState = config.get("lockState");
     if (lockState > 0) {
         if (config.get('pairingEnabled') === null || config.get('pairingEnabled') === 1) {
             console.log("Pairing is enabled");

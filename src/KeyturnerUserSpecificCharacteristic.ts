@@ -15,7 +15,6 @@ import {
     CMD_ADVANCED_CONFIG,
     CMD_UPDATE_TIME,
     CMD_LOCK_ACTION,
-    CMD_AUTHORIZATION_DATA_INVITE,
     CMD_REMOVE_AUTHORIZATION_ENTRY,
     CMD_ERROR,
     NUKI_NONCEBYTES,
@@ -29,6 +28,7 @@ import {
 } from "./Constants";
 import {crc16ccitt} from "crc";
 import * as sodium from "sodium";
+import {Provider} from "nconf";
 
 interface KeyturnerStateInitial {
     key: "Initial"
@@ -48,7 +48,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
         key: "Initial"
     };
 
-    constructor(private config:any) {
+    constructor(private config: Provider) {
         super(KEYTURNER_USDIO_CHARACTERISTIC_UUID);
     }
 
@@ -114,35 +114,35 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 const nonce = payload.slice(0, 32);
                 console.log("Nonce", nonce.toString("hex"), this.state.challenge.toString("hex"));
 
-                var nukiIdStr = this.config.get('nukiId');
-                var nukiId = new Buffer(nukiIdStr, 'hex');
-                var nameStr = this.config.get("name");
+                const nukiIdStr = this.config.get('nukiId');
+                const nukiId = new Buffer(nukiIdStr, 'hex');
+                let nameStr = this.config.get("name");
                 if (!nameStr) {
                     nameStr = 'Nuki_' + nukiIdStr;
                 }
-                var nameBuffer = new Buffer(32).fill(' ');
+                const nameBuffer = new Buffer(32).fill(' ');
                 const name = new Buffer(nameStr);
                 if (name.length > nameBuffer.length) {
                     name.copy(nameBuffer, 0, 0, nameBuffer.length);
                 } else {
                     name.copy(nameBuffer, 0, 0, name.length);
                 }
-                var latitude = this.config.get("latitude") || 0;
-                var longitude = this.config.get("longitude") || 0;
-                var latBuffer = new Buffer(4);
+                const latitude = this.config.get("latitude") || 0;
+                const longitude = this.config.get("longitude") || 0;
+                const latBuffer = new Buffer(4);
                 latBuffer.writeFloatLE(latitude, 0);
-                var longitudeBuffer = new Buffer(4);
+                const longitudeBuffer = new Buffer(4);
                 longitudeBuffer.writeFloatLE(longitude, 0);
 
-                var autoUnlatch = new Buffer(1);
+                const autoUnlatch = new Buffer(1);
                 autoUnlatch.writeUInt8(this.config.get("autoUnlatch") || 0, 0);
-                var pairingEnabled = new Buffer(1);
+                const pairingEnabled = new Buffer(1);
                 pairingEnabled.writeUInt8(this.config.get("pairingEnabled") == null ? 1 : this.config.get("pairingEnabled"), 0);
-                var buttonEnabled = new Buffer(1);
+                const buttonEnabled = new Buffer(1);
                 buttonEnabled.writeUInt8(this.config.get("buttonEnabled") == null ? 1 : this.config.get("buttonEnabled"), 0);
-                var ledEnabled = new Buffer(1);
+                const ledEnabled = new Buffer(1);
                 ledEnabled.writeUInt8(this.config.get("ledEnabled") == null ? 1 : this.config.get("ledEnabled"), 0);
-                var ledBrightness = new Buffer(1);
+                const ledBrightness = new Buffer(1);
                 ledBrightness.writeUInt8(this.config.get("ledBrightness") == null ? 3 : this.config.get("ledBrightness"), 0);
 
                 const d = new Date();
@@ -157,20 +157,20 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 const timezoneOffset = new Buffer(2);
                 timezoneOffset.writeInt16LE(d.getTimezoneOffset(), 0);
 
-                var dstMode = new Buffer(1);
+                const dstMode = new Buffer(1);
                 dstMode.writeUInt8(this.config.get("dstMode") == null ? 1 : this.config.get("dstMode"), 0);  // 0x01 european
 
-                var hasFob = new Buffer(1);
+                const hasFob = new Buffer(1);
                 hasFob.writeUInt8(1, 0);
 
-                var fobAction1 = new Buffer(1);
+                const fobAction1 = new Buffer(1);
                 fobAction1.writeUInt8(this.config.get("fobAction1") == null ? 1 : this.config.get("fobAction1"), 0);   // unlock
-                var fobAction2 = new Buffer(1);
+                const fobAction2 = new Buffer(1);
                 fobAction2.writeUInt8(this.config.get("fobAction2") == null ? 2 : this.config.get("fobAction2"), 0);   // lock
-                var fobAction3 = new Buffer(1);
+                const fobAction3 = new Buffer(1);
                 fobAction3.writeUInt8(this.config.get("fobAction3") || 0, 0);   // nothing
 
-                var configData = Buffer.concat([nukiId, nameBuffer, latBuffer, longitudeBuffer, autoUnlatch,
+                const configData = Buffer.concat([nukiId, nameBuffer, latBuffer, longitudeBuffer, autoUnlatch,
                     pairingEnabled, buttonEnabled, ledEnabled, ledBrightness, currentTimeBuffer,
                     timezoneOffset, dstMode, hasFob, fobAction1, fobAction3, fobAction3]);
                 this.state = {
@@ -197,7 +197,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 const setFobAction2 = payload.readUInt8(49);
                 const setFobAction3 = payload.readUInt8(50);
                 const nonce3 = payload.slice(51, 51 + 32);
-                var setPin = payload.readUInt16LE(51 + 32);
+                const setPin = payload.readUInt16LE(51 + 32);
 
                 if (Buffer.compare(this.state.challenge, nonce3) !== 0) {
                     return this.buildError(K_ERROR_BAD_NONCE, cmdId, "ERROR: nonce differ");
@@ -217,7 +217,9 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 this.config.set("fobAction2", setFobAction2);
                 this.config.set("fobAction3", setFobAction3);
                 this.config.set("adminPin", setPin);
-                this.config.save(); // TODO: promise, error handling
+                this.config.save(null, (error) => {
+                    // TODO: promise, error handling
+                });
                 this.state = {
                     key: "Initial"
                 };
@@ -303,6 +305,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                                     action = 2;
                                 }
                             }
+                            break;
                         case 0:
                         default:
                             this.state = {
@@ -407,7 +410,9 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 console.log("old PIN verified ok");
                 this.config.set('adminPin', newPin);
                 console.log("set new Pin: ", newPin);
-                this.config.save(); // TODO: promise, error handling
+                this.config.save(null, (error) => {
+                    // TODO: promise, error handling
+                });
                 this.state = {
                     key: "Initial"
                 };
@@ -430,7 +435,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                     return this.buildError(K_ERROR_BAD_PIN, cmdId, "ERROR: pin not ok. Saved: " + savedPin4 + ", given: " + pin4);
                 }
                 console.log("PIN verified ok");
-                var userRoRemove = users[authIdToRemove];
+                const userRoRemove = users[authIdToRemove];
                 if (userRoRemove) {
                     delete users[authIdToRemove];
                 }
@@ -451,7 +456,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
         const lockState = new Buffer(1);
         lockState.writeUInt8(this.config.get("lockState") || 1, 0);
 
-        var trigger = new Buffer(1);
+        const trigger = new Buffer(1);
         trigger.writeUInt8(0, 0);  // bluetooth
 
         const d = new Date();
@@ -488,9 +493,9 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
     private buildMessage(cmd: number, payload: Buffer): Buffer {
         const cmdBuffer = Buffer.alloc(2);
         cmdBuffer.writeUInt16LE(cmd, 0);
-        var responseData = Buffer.concat([cmdBuffer, payload]);
-        var checksum = crc16ccitt(responseData);
-        var checksumBuffer = new Buffer(2);
+        const responseData = Buffer.concat([cmdBuffer, payload]);
+        const checksum = crc16ccitt(responseData);
+        const checksumBuffer = new Buffer(2);
         checksumBuffer.writeUInt16LE(checksum, 0);
         return Buffer.concat([responseData, checksumBuffer]);
     }
@@ -500,9 +505,9 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
         authIdBuffer.writeUInt32LE(authId, 0);
         const cmdBuffer = Buffer.alloc(2);
         cmdBuffer.writeUInt16LE(cmd, 0);
-        var responseData = Buffer.concat([authIdBuffer, cmdBuffer, payload]);
-        var checksum = crc16ccitt(responseData);
-        var checksumBuffer = new Buffer(2);
+        const responseData = Buffer.concat([authIdBuffer, cmdBuffer, payload]);
+        const checksum = crc16ccitt(responseData);
+        const checksumBuffer = new Buffer(2);
         checksumBuffer.writeUInt16LE(checksum, 0);
         const unencrypted = Buffer.concat([responseData, checksumBuffer]);
         console.log("will encrypt", unencrypted.toString("hex"), unencrypted.length);
