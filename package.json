@@ -11,7 +11,7 @@
     "@abandonware/bleno": "^0.5.1-2",
     "crc": "^3.8.0",
     "nconf": "^0.10.0",
-    "sodium": "^3.0.2",
+    "tweetnacl": "^1.0.3",
     "uuid": "^8.1.0"
   },
   "devDependencies": {
