@@ -1,47 +1,15 @@
-import * as _ from "underscore";
-import * as nconf from "nconf";
 import * as bleno from "@abandonware/bleno";
-import * as sodium from "sodium";
-import * as uuid from "uuid";
 import {InitializationService} from "./InitializationService";
 import {PairingService} from "./PairingService";
 import {KeyturnerService} from "./KeyturnerService";
 import {Advertiser} from "./Advertiser";
+import {Configuration} from "./Configuration";
 
-const config = new nconf.Provider({
-    env: true,
-    argv: true,
-    store: {
-        type: 'file',
-        file: 'config.json'
-    }
-});
+const config = new Configuration();
 
-const strUuid = config.get('uuid');
-let nukiIdStr = config.get('nukiId');
-if (!(strUuid && _.isString(strUuid) && strUuid.length === 32)) {
-    const arrUUID = new Array(16);
-    uuid.v1(null, arrUUID);
-    config.set('uuid', new Buffer(arrUUID).toString('hex'));
-    const nukiSerial = Buffer.alloc(4);
-    sodium.api.randombytes_buf(nukiSerial);
-    nukiIdStr = nukiSerial.toString('hex').toUpperCase();
-    config.set('nukiId', nukiIdStr);
-    config.set('nukiState', 0); // not initialized
-    config.save(null,function (err) {
-        if (err) {
-            console.log("Writing configuration failed", err);
-        } else {
-            console.log("Initial configuration saved");
-        }
-    });
-} else {
-    console.log("SL UUID: " + strUuid);
-}
+process.env['BLENO_DEVICE_NAME'] = 'Nuki_' + config.getNukiIdStr();
 
-process.env['BLENO_DEVICE_NAME'] = 'Nuki_' + nukiIdStr;
-
-const advertiser = new Advertiser(nukiIdStr);
+const advertiser = new Advertiser(config.getNukiIdStr());
 advertiser.init();
 
 bleno.on('accept', function (address) {

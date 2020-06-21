@@ -28,7 +28,7 @@ import {
 } from "./Constants";
 import {crc16ccitt} from "crc";
 import * as sodium from "sodium";
-import {Provider} from "nconf";
+import {Configuration} from "./Configuration";
 
 interface KeyturnerStateInitial {
     key: "Initial"
@@ -48,7 +48,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
         key: "Initial"
     };
 
-    constructor(private config: Provider) {
+    constructor(private config: Configuration) {
         super(KEYTURNER_USDIO_CHARACTERISTIC_UUID);
     }
 
@@ -114,7 +114,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 const nonce = payload.slice(0, 32);
                 console.log("Nonce", nonce.toString("hex"), this.state.challenge.toString("hex"));
 
-                const nukiIdStr = this.config.get('nukiId');
+                const nukiIdStr = this.config.getNukiIdStr();
                 const nukiId = new Buffer(nukiIdStr, 'hex');
                 let nameStr = this.config.get("name");
                 if (!nameStr) {
@@ -217,9 +217,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 this.config.set("fobAction2", setFobAction2);
                 this.config.set("fobAction3", setFobAction3);
                 this.config.set("adminPin", setPin);
-                this.config.save(null, (error) => {
-                    // TODO: promise, error handling
-                });
+                await this.config.save();
                 this.state = {
                     key: "Initial"
                 };
@@ -410,9 +408,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 console.log("old PIN verified ok");
                 this.config.set('adminPin', newPin);
                 console.log("set new Pin: ", newPin);
-                this.config.save(null, (error) => {
-                    // TODO: promise, error handling
-                });
+                await this.config.save();
                 this.state = {
                     key: "Initial"
                 };

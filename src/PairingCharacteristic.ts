@@ -23,7 +23,7 @@ import * as sodium from "sodium";
 import {createHmac} from "crypto";
 import * as _ from "underscore";
 import {HSalsa20} from "./HSalsa20";
-import {Provider} from "nconf";
+import {Configuration, User} from "./Configuration";
 
 type PairingState = PairingStateInitial|PairingStatePublicKeySent|PairingStateChallengeSent|PairingStateChallenge2Sent|PairingStateAuthorizationIdSent;
 
@@ -65,7 +65,7 @@ export class PairingCharacteristic extends DataIoCharacteristic {
     private serverPrivateKey: Buffer;
     private serverPublicKey: Buffer;
 
-    constructor(private config: Provider) {
+    constructor(private config: Configuration) {
         super(PAIRING_GDIO_CHARACTERISTIC_UUID);
         const key = new sodium.Key.ECDH();
         this.serverPrivateKey = key.sk().get();
@@ -202,11 +202,11 @@ export class PairingCharacteristic extends DataIoCharacteristic {
 
                     const users = this.config.get("users") || {};
 
-                    const user = _.findWhere(users, {name: name}) as any;
+                    const user = _.findWhere(users, {name: name}) as User;
                     if (user) {
                         newAuthorizationId = user.authorizationId;
                     } else {
-                        _.each(users, (user: any) => {
+                        _.each(users, (user: User) => {
                             if (user.authorizationId >= newAuthorizationId) {
                                 newAuthorizationId = user.authorizationId + 1;
                             }
@@ -223,9 +223,7 @@ export class PairingCharacteristic extends DataIoCharacteristic {
                     };
                     this.config.set("users", users);
 
-                    this.config.save(null, (error) => {
-                        // TODO: promise, error handling
-                    });
+                    await this.config.save();
                     console.log("Step 18: new user " + name + " with authorization id " + newAuthorizationId + " added to configuration");
 
                     console.log("Step 19: creating authorization-id command...");
