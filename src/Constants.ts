@@ -29,6 +29,7 @@ export const CMD_REQUEST_CALIBRATION = 0x1A;
 export const CMD_SET_PIN = 0x19;
 export const CMD_VERIFY_PIN = 0x20;
 export const CMD_UPDATE_TIME = 0x21;
+export const CMD_FIRMWARE_STATUS = 0x29;
 export const CMD_SET_ADVANCED_CONFIG = 0x35;
 export const CMD_REQUEST_ADVANCED_CONFIG = 0x36;
 export const CMD_ADVANCED_CONFIG = 0x37;

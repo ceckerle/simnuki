@@ -42,7 +42,7 @@ import {
     LOCK_STATE_UNLATCHED,
     LOCK_ACTION_UNLATCH,
     LOCK_ACTION_LOCKNGO_WITH_UNLATCH,
-    LOCK_ACTION_FULL_LOCK, LOCK_STATE_UNLOCKING, LOCK_STATE_LOCKING
+    LOCK_ACTION_FULL_LOCK, LOCK_STATE_UNLOCKING, LOCK_STATE_LOCKING, CMD_FIRMWARE_STATUS
 } from "./Constants";
 import {crc16ccitt} from "crc";
 import * as sodium from "sodium";
@@ -120,6 +120,12 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                         return this.buildEncryptedMessage(CMD_CHALLENGE, challenge, authorizationId, nonceABF, sharedSecret);
                     case CMD_NUKI_STATES:
                         return this.buildStateMessage(authorizationId, nonceABF, sharedSecret);
+                    case CMD_FIRMWARE_STATUS:
+                        const firmwareStatus = Buffer.alloc(8);
+                        firmwareStatus.writeUInt8(1, 0);
+                        firmwareStatus.writeUInt8(2, 1);
+                        firmwareStatus.writeUInt8(3, 2);
+                        return this.buildEncryptedMessage(CMD_FIRMWARE_STATUS, firmwareStatus, authorizationId, nonceABF, sharedSecret);
                     default:
                         return this.buildError(ERROR_UNKNOWN, cmdId,`bad request data ${dataId}`);
                 }
