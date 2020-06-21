@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./main.js",
+    "start": "node ./build/main.js",
     "build": "tsc -p ."
   },
   "dependencies": {

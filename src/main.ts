@@ -1,5 +1,4 @@
 import * as _ from "underscore";
-import * as path from "path";
 import * as nconf from "nconf";
 import * as bleno from "@abandonware/bleno";
 import * as sodium from "sodium";
@@ -14,7 +13,7 @@ var config = new nconf.Provider({
     argv: true,
     store: {
         type: 'file',
-        file: path.join(__dirname, 'config.json')
+        file: 'config.json'
     }
 });
 

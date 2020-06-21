@@ -3,6 +3,7 @@
     "target": "es2020",
     "module": "commonjs",
     "strict": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "outDir": "./build"
   }
 }
