@@ -1,27 +1,13 @@
 declare module "sodium" {
 
-    class CryptoBaseBuffer {
-        get(): Buffer;
-    }
-
-    class KeyPair {
-        pk(): CryptoBaseBuffer;
-        sk(): CryptoBaseBuffer;
-    }
-
-    class DHKey extends KeyPair {
-        constructor(publicKey?: Buffer, secretKey?: Buffer, encoding?: string);
-    }
-
     interface Sodium {
-        Key: {
-            ECDH: typeof DHKey
-        }
         api: {
-            crypto_scalarmult: (n: Buffer, p: Buffer) => Buffer;
             randombytes_buf: (b: Buffer) => void;
-            crypto_secretbox_open: (a: Buffer, b: Buffer, c: Buffer) => Buffer;
-            crypto_secretbox: (a: Buffer, b: Buffer, c: Buffer) => Buffer;
+            crypto_scalarmult_curve25519_base: (a: Buffer) => Buffer;
+            crypto_scalarmult_curve25519: (a: Buffer, b: Buffer) => Buffer;
+            crypto_core_hsalsa20: (a: Buffer, b: Buffer, c: Buffer) => Buffer;
+            crypto_secretbox_xsalsa20poly1305: (a: Buffer, b: Buffer, c: Buffer) => Buffer;
+            crypto_secretbox_xsalsa20poly1305_open: (a: Buffer, b: Buffer, c: Buffer) => Buffer;
         }
     }
 

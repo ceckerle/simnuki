@@ -1,6 +1,5 @@
 import * as nconf from "nconf";
 import {Provider} from "nconf";
-import * as _ from "underscore";
 import * as uuid from "uuid";
 import {LOCK_STATE_UNCALIBRATED, NUKI_STATE_UNINITIALIZED} from "./Protocol";
 import {random} from "./Crypto";
@@ -28,7 +27,7 @@ export class Configuration {
         });
 
         const strUuid = this.config.get('uuid');
-        if (!(strUuid && _.isString(strUuid) && strUuid.length === 32)) {
+        if (!strUuid) {
             const arrUUID = new Array(16);
             uuid.v1(null, arrUUID);
             this.config.set('uuid', new Buffer(arrUUID).toString('hex'));

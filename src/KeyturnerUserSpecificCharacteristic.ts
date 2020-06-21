@@ -92,9 +92,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
         const sharedSecret = new Buffer(user.sharedSecret, "hex");
 
-        const prefixBuff = Buffer.alloc(16);
-
-        const decryptedMessge = decrypt(Buffer.concat([prefixBuff, encryptedMessage]), nonceABF, sharedSecret);
+        const decryptedMessge = decrypt(Buffer.concat([encryptedMessage]), nonceABF, sharedSecret);
 
         // console.log("decrypted " + decryptedMessge.toString("hex"));
 
