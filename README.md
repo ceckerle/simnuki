@@ -5,22 +5,14 @@ The official nuki app can pair with it and some actions can be performed like lo
 Note that this code is preliminary and my cause unexpected results.
 
 # Installation
-I'm running the nuki smart lock simulator on a Raspberry PI 2 and on a Raspberry PI 3 with node.js version 4.4.4 and on the PI 2 there is a bluetooth dongle connected via USB.
+Tested on a Raspberry PI 4 running Raspberry Pi OS 2020-05-27 and Node.js 12.8.1.
 
 ## Install Node.js
+https://nodejs.org/en/download/package-manager/
 
-```sh
-wget https://nodejs.org/dist/v4.4.4/node-v4.4.4-linux-armv6l.tar.gz (Raspberry PI 2)
-wget https://nodejs.org/dist/v4.4.4/node-v4.4.4-linux-armv7l.tar.gz (Raspberry PI 3)
-
-tar xvfz node-v4.4.4-linux-armvXl.tar.gz
-cd node-v4.4.4-linux-armvXl
-sudo cp -R * /usr/local/
-```
 ## Bluetooth connection
-
 ```sh
-sudo apt-get install bluetooth bluez libbluetooth-dev libudev-dev
+sudo apt-get install libbluetooth-dev libudev-dev
 ```
 
 ### Running without root/sudo
@@ -37,19 +29,17 @@ __Note:__ The above command requires ```setcap``` to be installed, it can be ins
 
  * apt: ```sudo apt-get install libcap2-bin```
 
-(see https://github.com/sandeepmistry/noble#running-on-linux)
-
-### Tool Dependencies
-Some of the npm modules need to be compiled natively and for this libtool is needed.
-
-```sh
-sudo apt-get install libtool
-```
+(see https://github.com/abandonware/bleno#running-on-linux)
 
 ## Get node modules
 In the cloned repository run:
 ```sh
 npm install
+```
+
+## Compile TypeScript
+```sh
+npm run build
 ```
 
 ## Run it
@@ -58,5 +48,5 @@ To run the simulator, call node with main.js. It advertises a nuki smart lock vi
 There is also the counterpart for it: a library to build a client: https://github.com/as19git67/nukible. In the samples directory there is main.js, which can be used on a second Raspberry PI to simulate the Nuki app.
 
 ```sh
-node main.js
+npm start
 ```
