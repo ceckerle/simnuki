@@ -1,5 +1,6 @@
 import {DataIoCharacteristic} from "./DataIoCharacteristic";
-import {ERROR_UNKNOWN, KEYTURNER_GDIO_CHARACTERISTIC_UUID} from "./Protocol";
+import {KEYTURNER_GDIO_CHARACTERISTIC_UUID} from "./Protocol";
+import {ERROR_UNKNOWN} from "./command/Constants";
 
 export class KeyturnerGeneralCharacteristic extends DataIoCharacteristic {
 

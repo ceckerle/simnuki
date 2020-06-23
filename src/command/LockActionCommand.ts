@@ -1,0 +1,59 @@
+import {Command} from "./Command";
+import {CMD_LOCK_ACTION, ERROR_BAD_LENGTH} from "./Constants";
+import {DecodingError} from "./DecodingError";
+import {readString, writeString} from "./Util";
+
+export class LockActionCommand extends Command {
+    
+    readonly id = CMD_LOCK_ACTION;
+    lockAction: number;
+    appId: number;
+    flags: number;
+    nameSuffix?: string;
+    nonce: Buffer;
+
+    constructor(lockAction?: number, appId?: number, flags?: number, nameSuffix?: string, nonce?: Buffer) {
+        super();
+        this.lockAction = lockAction ?? 0;
+        this.appId = appId ?? 0;
+        this.flags = flags ?? 0;
+        this.nameSuffix = nameSuffix;
+        this.nonce = nonce ?? Buffer.alloc(32);
+    }
+    
+    decode(buffer: Buffer): void {
+        if (buffer.length !== 38 && buffer.length !== 58) {
+            throw new DecodingError(ERROR_BAD_LENGTH);
+        }
+        let ofs = 0;
+        this.lockAction = buffer.readUInt8(ofs);
+        ofs += 1;
+        this.appId = buffer.readUInt32LE(ofs);
+        ofs += 4;
+        this.flags = buffer.readUInt8(ofs);
+        ofs += 1;
+        if (buffer.length === 58) {
+            this.nameSuffix = readString(buffer, ofs, 20);
+            ofs += 20;
+        }
+        this.nonce = buffer.slice(ofs, ofs + 32);
+    }
+
+    encode(): Buffer {
+        const buffer = Buffer.alloc(58);
+        let ofs = 0;
+        buffer.writeUInt8(this.lockAction, ofs);
+        ofs += 1;
+        buffer.writeUInt32LE(this.appId, ofs);
+        ofs += 4;
+        buffer.writeUInt8(this.flags, ofs);
+        ofs += 1;
+        if (this.nameSuffix) {
+            writeString(buffer, this.nameSuffix, ofs, 20);
+            ofs += 20;
+        }
+        this.nonce.copy(buffer, ofs);
+        return buffer;
+    }
+    
+}

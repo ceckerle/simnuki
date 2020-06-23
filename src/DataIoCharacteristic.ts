@@ -1,5 +1,6 @@
 import * as bleno from "@abandonware/bleno"
-import {CMD_ERROR, setCrc} from "./Protocol";
+import {CMD_ERROR} from "./command/Constants";
+import {setCrc} from "./command/Util";
 
 export abstract class DataIoCharacteristic extends bleno.Characteristic {
 

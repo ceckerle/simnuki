@@ -1,56 +1,49 @@
 import {DataIoCharacteristic} from "./DataIoCharacteristic";
-import {
-    checkCrc,
-    CMD_REQUEST_DATA,
-    CMD_CHALLENGE,
-    CMD_REQUEST_CONFIG,
-    CMD_CONFIG,
-    CMD_SET_CONFIG,
-    CMD_SET_PIN,
-    CMD_NUKI_STATES,
-    CMD_VERIFY_PIN,
-    CMD_STATUS,
-    CMD_REQUEST_CALIBRATION,
-    CMD_REQUEST_ADVANCED_CONFIG,
-    CMD_ADVANCED_CONFIG,
-    CMD_UPDATE_TIME,
-    CMD_LOCK_ACTION,
-    CMD_REMOVE_AUTHORIZATION_ENTRY,
-    NUKI_NONCEBYTES,
-    STATUS_COMPLETE,
-    STATUS_ACCEPTED,
-    ERROR_UNKNOWN,
-    K_ERROR_BAD_NONCE,
-    K_ERROR_BAD_PIN,
-    K_ERROR_BAD_PARAMETER,
-    KEYTURNER_USDIO_CHARACTERISTIC_UUID,
-    NUKI_STATE_DOOR_MODE,
-    LOCK_ACTION_FOB_ACTION_1,
-    LOCK_ACTION_FOB_ACTION_2,
-    LOCK_ACTION_FOB_ACTION_3,
-    FOB_ACTION_LOCK,
-    FOB_ACTION_UNLOCK,
-    LOCK_ACTION_UNLOCK,
-    LOCK_ACTION_LOCK,
-    FOB_ACTION_LOCKNGO,
-    LOCK_ACTION_LOCKNGO,
-    FOB_ACTION_INTELLIGENT,
-    FOB_ACTION_NONE,
-    LOCK_STATE_LOCKED,
-    LOCK_STATE_UNLOCKED,
-    LOCK_STATE_UNLATCHED,
-    LOCK_ACTION_UNLATCH,
-    LOCK_ACTION_LOCKNGO_WITH_UNLATCH,
-    LOCK_ACTION_FULL_LOCK,
-    LOCK_STATE_UNLOCKING,
-    LOCK_STATE_LOCKING,
-    CMD_FIRMWARE_STATUS,
-    setCrc,
-    readString,
-    writeString
-} from "./Protocol";
 import {Configuration} from "./Configuration";
 import {decrypt, encrypt, random} from "./Crypto";
+import {
+    FOB_ACTION_INTELLIGENT,
+    FOB_ACTION_LOCK,
+    FOB_ACTION_LOCKNGO, FOB_ACTION_NONE,
+    FOB_ACTION_UNLOCK,
+    KEYTURNER_USDIO_CHARACTERISTIC_UUID,
+    LOCK_ACTION_FOB_ACTION_1,
+    LOCK_ACTION_FOB_ACTION_2,
+    LOCK_ACTION_FOB_ACTION_3, LOCK_ACTION_FULL_LOCK,
+    LOCK_ACTION_LOCK,
+    LOCK_ACTION_LOCKNGO, LOCK_ACTION_LOCKNGO_WITH_UNLATCH, LOCK_ACTION_UNLATCH,
+    LOCK_ACTION_UNLOCK,
+    LOCK_STATE_LOCKED, LOCK_STATE_LOCKING, LOCK_STATE_UNLATCHED, LOCK_STATE_UNLOCKED, LOCK_STATE_UNLOCKING,
+    NUKI_NONCEBYTES
+} from "./Protocol";
+import {decodeCommand} from "./command/Codec";
+import {
+    CMD_CHALLENGE,
+    CMD_FIRMWARE_STATUS,
+    CMD_KEYTURNER_STATES, ERROR_BAD_CRC,
+    ERROR_UNKNOWN,
+    K_ERROR_BAD_NONCE, K_ERROR_BAD_PARAMETER, K_ERROR_BAD_PIN, STATUS_ACCEPTED, STATUS_COMPLETE
+} from "./command/Constants";
+import {Command} from "./command/Command";
+import {RequestDataCommand} from "./command/RequestDataCommand";
+import {ErrorCommand} from "./command/ErrorCommand";
+import {DecodingError} from "./command/DecodingError";
+import {ChallengeCommand} from "./command/ChallengeCommand";
+import {FirmwareStatusCommand} from "./command/FirmwareStatusCommand";
+import {RequestConfigCommand} from "./command/RequestConfigCommand";
+import {ConfigCommand} from "./command/ConfigCommand";
+import {SetConfigCommand} from "./command/SetConfigCommand";
+import {StatusCommand} from "./command/StatusCommand";
+import {VerifySecurityPinCommand} from "./command/VerifySecurityPinCommand";
+import {RequestAdvancedConfigCommand} from "./command/RequestAdvancedConfigCommand";
+import {AdvancedConfigCommand} from "./command/AdvancedConfigCommand";
+import {UpdateTimeCommand} from "./command/UpdateTimeCommand";
+import {LockActionCommand} from "./command/LockActionCommand";
+import {RequestCalibrationCommand} from "./command/RequestCalibrationCommand";
+import {SetSecurityPinCommand} from "./command/SetSecurityPinCommand";
+import {RemoveAuthorizationEntryCommand} from "./command/RemoveAuthorizationEntryCommand";
+import {KeyturnerStatesCommand} from "./command/KeyturnerStatesCommand";
+import {checkCrc, setCrc} from "./command/Util";
 
 interface KeyturnerStateInitial {
     key: "Initial"
@@ -63,6 +56,11 @@ interface KeyturnerStateChallengeSent {
 
 type KeyturnerState = KeyturnerStateInitial|KeyturnerStateChallengeSent;
 
+interface EncryptionContext {
+    authorizationId: number;
+    nonce: Buffer;
+    sharedSecret: Buffer;
+}
 
 export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
@@ -79,8 +77,8 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
         const nonceABF = data.slice(0, 24);
         const authorizationId = data.readUInt32LE(24);
-        const messageLen = data.readUInt16LE(28);
-        const encryptedMessage = data.slice(30);
+        const commandLen = data.readUInt16LE(28);
+        const encryptedCommand = data.slice(30);
 
         const users = this.config.get("users") || {};
 
@@ -92,423 +90,364 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
         const sharedSecret = new Buffer(user.sharedSecret, "hex");
 
-        const decryptedMessge = decrypt(Buffer.concat([encryptedMessage]), nonceABF, sharedSecret);
+        const decryptedCommand = decrypt(Buffer.concat([encryptedCommand]), nonceABF, sharedSecret);
+
+        if (!checkCrc(decryptedCommand)) {
+            return this.buildError(ERROR_BAD_CRC, 0, "bad crc");
+        }
+
+        const authorizationIdFromEncryptedCommand = decryptedCommand.readUInt32LE(0);
+
+        const encryptionContext = {
+            authorizationId,
+            nonce: nonceABF,
+            sharedSecret
+        }
 
         // console.log("decrypted " + decryptedMessge.toString("hex"));
 
-        if (!checkCrc(decryptedMessge)) {
-            return this.buildError(ERROR_UNKNOWN, 0, "bad crc");
+        try {
+            const command = decodeCommand(decryptedCommand.slice(4), true);
+            const response = await this.handleCommand(command, encryptionContext);
+            if (response instanceof ErrorCommand) {
+                this.state = {
+                    key: "Initial"
+                };
+                if (response.message) {
+                    console.log(response.message);
+                }
+            }
+            return this.encryptCommand(response, authorizationId, nonceABF, sharedSecret);
+        } catch (e) {
+            console.log(e);
+            this.state = {
+                key: "Initial"
+            };
+            if (e instanceof DecodingError) {
+                return this.encryptCommand(new ErrorCommand(e.code, e.commandId), authorizationId, nonceABF, sharedSecret);
+            } else {
+                return this.encryptCommand(new ErrorCommand(ERROR_UNKNOWN), authorizationId, nonceABF, sharedSecret);
+            }
         }
-        const authorizationIdFromEncryptedMessage = decryptedMessge.readUInt32LE(0);
-        const cmdId = decryptedMessge.readUInt16LE(4);
-        const payload = decryptedMessge.slice(6, decryptedMessge.length - 2);
-        console.log("cmd " + cmdId);
-        switch (cmdId) {
-            case CMD_REQUEST_DATA:
-                if (this.state.key !== "Initial") {
-                    return this.buildError(ERROR_UNKNOWN, cmdId, `unexpected state ${this.state.key} for command ${cmdId}`);
-                }
-                // TODO: check length
-                const dataId = payload.readUInt16LE(0)
-                switch (dataId) {
-                    case CMD_CHALLENGE:
-                        console.log("CL requests challenge");
-                        const challenge = random(NUKI_NONCEBYTES);
-                        this.state = {
-                            key: "ChallengeSent",
-                            challenge
+    }
+
+    private async handleCommand(command: Command, encryptionContext: EncryptionContext): Promise<Command> {
+        if (command instanceof RequestDataCommand) {
+            if (this.state.key !== "Initial") {
+                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+            }
+            switch (command.commandId) {
+                case CMD_CHALLENGE:
+                    console.log("CL requests challenge");
+                    const challenge = new ChallengeCommand(random(NUKI_NONCEBYTES));
+                    this.state = {
+                        key: "ChallengeSent",
+                        challenge: challenge.nonce
+                    }
+                    return challenge;
+                case CMD_KEYTURNER_STATES:
+                    return this.buildStateCommand();
+                case CMD_FIRMWARE_STATUS:
+                    return new FirmwareStatusCommand(0x010203);
+                default:
+                    return new ErrorCommand(ERROR_UNKNOWN, command.id, `bad request data ${command.commandId}`);
+            }
+        } else if (command instanceof RequestConfigCommand) {
+            if (this.state.key !== "ChallengeSent") {
+                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+            }
+            console.log("CL sent CMD_REQUEST_CONFIG");
+            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
+                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
+            }
+
+            this.state = {
+                key: "Initial"
+            };
+
+            const now = new Date();
+            return new ConfigCommand(
+                parseInt(this.config.getNukiIdStr(), 16),
+                this.config.getName(),
+                this.config.get("latitude"),
+                this.config.get("longitude"),
+                this.config.get("autoUnlatch"),
+                this.config.get("pairingEnabled"),
+                this.config.get("buttonEnabled"),
+                this.config.get("ledFlashEnabled"),
+                this.config.get("ledBrightness"),
+                now,
+                -now.getTimezoneOffset(),
+                this.config.get("dstMode") ?? 1,
+                1,
+                this.config.get("fobAction1") || 1, // unlock
+                this.config.get("fobAction2") || 2, // lock
+                this.config.get("fobAction3"),
+            );
+        } else if (command instanceof SetConfigCommand) {
+            if (this.state.key !== "ChallengeSent") {
+                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+            }
+            console.log("CL sent CMD_SET_CONFIG");
+
+            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
+                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
+            }
+            if (command.securityPin !== this.config.get("adminPin")) {
+                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: bad pin");
+            }
+
+            this.config.set("name", command.name);
+            this.config.set("latitude", command.latitude);
+            this.config.set("longitude", command.longitude);
+            this.config.set("autoUnlatch", command.autoUnlatch);
+            this.config.set("pairingEnabled", command.pairingEnabled);
+            this.config.set("buttonEnabled", command.buttonEnabled);
+            this.config.set("ledFlashEnabled", command.ledEnabled);
+            this.config.set("ledBrightness", command.ledBrightness);
+            this.config.set("dstMode", command.dstMode);
+            this.config.set("fobAction1", command.fobAction1);
+            this.config.set("fobAction2", command.fobAction2);
+            this.config.set("fobAction3", command.fobAction3);
+            await this.config.save();
+            this.state = {
+                key: "Initial"
+            };
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof VerifySecurityPinCommand) {
+            if (this.state.key !== "ChallengeSent") {
+                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+            }
+            console.log("CL sent CMD_VERIFY_PIN");
+
+            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
+                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
+            }
+            this.state = {
+                key: "Initial"
+            };
+
+            console.log("PIN ", command.securityPin);
+
+            if (command.securityPin !== this.config.get("adminPin")) {
+                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: bad pin");
+            }
+
+            // TODO: why? this.config.setNukiState(NUKI_STATE_DOOR_MODE);
+
+            console.log("PIN verified ok");
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof RequestAdvancedConfigCommand) {
+            if (this.state.key !== "ChallengeSent") {
+                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+            }
+            console.log("CL sent CMD_REQUEST_ADVANCED_CONFIG");
+
+            this.state = {
+                key: "Initial"
+            }
+            return new AdvancedConfigCommand();
+        } else if (command instanceof UpdateTimeCommand) {
+            if (this.state.key !== "ChallengeSent") {
+                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+            }
+            this.state = {
+                key: "Initial"
+            };
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof LockActionCommand) {
+            console.log("CL sent CMD_LOCK_ACTION");
+            if (this.state.key !== "ChallengeSent") {
+                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+            }
+
+            const lockAction = command.lockAction;
+            let action = lockAction;
+            const currentLockState = this.config.getLockState();
+            if (lockAction === LOCK_ACTION_FOB_ACTION_1 || lockAction === LOCK_ACTION_FOB_ACTION_2 || lockAction === LOCK_ACTION_FOB_ACTION_3) {
+                const fobAction = this.config.get(`fobAction${lockAction & 0xf}`);
+                switch (fobAction) {
+                    case FOB_ACTION_UNLOCK:
+                        action = LOCK_ACTION_UNLOCK;
+                        break;
+                    case FOB_ACTION_LOCK:
+                        action = LOCK_ACTION_LOCK;
+                        break;
+                    case FOB_ACTION_LOCKNGO:
+                        action = LOCK_ACTION_LOCKNGO;
+                        break;
+                    case FOB_ACTION_INTELLIGENT:
+                        if (currentLockState === LOCK_STATE_LOCKED) {
+                            action = LOCK_ACTION_UNLOCK;
+                        } else {
+                            if (currentLockState === LOCK_STATE_UNLOCKED || currentLockState === LOCK_STATE_UNLATCHED) {
+                                action = LOCK_ACTION_LOCK;
+                            }
                         }
-                        return this.buildEncryptedMessage(CMD_CHALLENGE, challenge, authorizationId, nonceABF, sharedSecret);
-                    case CMD_NUKI_STATES:
-                        return this.buildStateMessage(authorizationId, nonceABF, sharedSecret);
-                    case CMD_FIRMWARE_STATUS:
-                        const firmwareStatus = Buffer.alloc(8);
-                        firmwareStatus.writeUInt8(1, 0);
-                        firmwareStatus.writeUInt8(2, 1);
-                        firmwareStatus.writeUInt8(3, 2);
-                        return this.buildEncryptedMessage(CMD_FIRMWARE_STATUS, firmwareStatus, authorizationId, nonceABF, sharedSecret);
+                        break;
+                    case FOB_ACTION_NONE:
                     default:
-                        return this.buildError(ERROR_UNKNOWN, cmdId,`bad request data ${dataId}`);
-                }
-            case CMD_REQUEST_CONFIG:
-                if (this.state.key !== "ChallengeSent") {
-                    return this.buildError(ERROR_UNKNOWN, cmdId, `unexpected state ${this.state.key} for command ${cmdId}`);
-                }
-                // TODO: check length
-                console.log("CL sent CMD_REQUEST_CONFIG");
-                const nonce = payload.slice(0, 32);
-                // console.log("Nonce", nonce.toString("hex"), this.state.challenge.toString("hex"));
-
-                const nukiIdStr = this.config.getNukiIdStr();
-                const nukiId = new Buffer(nukiIdStr, 'hex');
-                const nameBuffer = new Buffer(32);
-                writeString(nameBuffer, this.config.getName());
-                const latitude = this.config.get("latitude") || 0;
-                const longitude = this.config.get("longitude") || 0;
-                const latBuffer = new Buffer(4);
-                latBuffer.writeFloatLE(latitude, 0);
-                const longitudeBuffer = new Buffer(4);
-                longitudeBuffer.writeFloatLE(longitude, 0);
-
-                const autoUnlatch = new Buffer(1);
-                autoUnlatch.writeUInt8(this.config.get("autoUnlatch") || 0, 0);
-                const pairingEnabled = new Buffer(1);
-                pairingEnabled.writeUInt8(this.config.get("pairingEnabled") == null ? 1 : this.config.get("pairingEnabled"), 0);
-                const buttonEnabled = new Buffer(1);
-                buttonEnabled.writeUInt8(this.config.get("buttonEnabled") == null ? 1 : this.config.get("buttonEnabled"), 0);
-                const ledEnabled = new Buffer(1);
-                ledEnabled.writeUInt8(this.config.get("ledEnabled") == null ? 1 : this.config.get("ledEnabled"), 0);
-                const ledBrightness = new Buffer(1);
-                ledBrightness.writeUInt8(this.config.get("ledBrightness") == null ? 3 : this.config.get("ledBrightness"), 0);
-
-                const d = new Date();
-                const currentTimeBuffer = new Buffer(7);
-                currentTimeBuffer.writeUInt16LE(d.getFullYear(), 0);
-                currentTimeBuffer.writeUInt8(d.getMonth() + 1, 2);
-                currentTimeBuffer.writeUInt8(d.getDate(), 3);
-                currentTimeBuffer.writeUInt8(d.getHours(), 4);
-                currentTimeBuffer.writeUInt8(d.getMinutes(), 5);
-                currentTimeBuffer.writeUInt8(d.getSeconds(), 6);
-
-                const timezoneOffset = new Buffer(2);
-                timezoneOffset.writeInt16LE(d.getTimezoneOffset(), 0);
-
-                const dstMode = new Buffer(1);
-                dstMode.writeUInt8(this.config.get("dstMode") == null ? 1 : this.config.get("dstMode"), 0);  // 0x01 european
-
-                const hasFob = new Buffer(1);
-                hasFob.writeUInt8(1, 0);
-
-                const fobAction1 = new Buffer(1);
-                fobAction1.writeUInt8(this.config.get("fobAction1") == null ? 1 : this.config.get("fobAction1"), 0);   // unlock
-                const fobAction2 = new Buffer(1);
-                fobAction2.writeUInt8(this.config.get("fobAction2") == null ? 2 : this.config.get("fobAction2"), 0);   // lock
-                const fobAction3 = new Buffer(1);
-                fobAction3.writeUInt8(this.config.get("fobAction3") || 0, 0);   // nothing
-
-                const configData = Buffer.concat([nukiId, nameBuffer, latBuffer, longitudeBuffer, autoUnlatch,
-                    pairingEnabled, buttonEnabled, ledEnabled, ledBrightness, currentTimeBuffer,
-                    timezoneOffset, dstMode, hasFob, fobAction1, fobAction3, fobAction3]);
-                this.state = {
-                    key: "Initial"
-                };
-                return this.buildEncryptedMessage(CMD_CONFIG, configData, authorizationId, nonceABF, sharedSecret);
-            case CMD_SET_CONFIG:
-                if (this.state.key !== "ChallengeSent") {
-                    return this.buildError(ERROR_UNKNOWN, cmdId, `unexpected state ${this.state.key} for command ${cmdId}`);
-                }
-                // TODO: check length
-                console.log("CL sent CMD_SET_CONFIG");
-                const setName = readString(payload.slice(0, 32));
-                const setLatitude = payload.readFloatLE(32);
-                const setLongitude = payload.readFloatLE(36);
-                const setAutoUnlatch = payload.readUInt8(40);
-                const setPairingEnabled = payload.readUInt8(41);
-                const setButtonEnabled = payload.readUInt8(42);
-                const setLedFlashEnabled = payload.readUInt8(43);
-                const setLedBrightness = payload.readUInt8(44);
-                const setTimezoneOffset = payload.readInt16LE(45);
-                const setDstMode = payload.readUInt8(47);
-                const setFobAction1 = payload.readUInt8(48);
-                const setFobAction2 = payload.readUInt8(49);
-                const setFobAction3 = payload.readUInt8(50);
-                const nonce3 = payload.slice(51, 51 + 32);
-                const setPin = payload.readUInt16LE(51 + 32);
-
-                if (Buffer.compare(this.state.challenge, nonce3) !== 0) {
-                    return this.buildError(K_ERROR_BAD_NONCE, cmdId, "ERROR: nonce differ");
-                }
-
-                this.config.set("name", setName);
-                this.config.set("latitude", setLatitude);
-                this.config.set("longitude", setLongitude);
-                this.config.set("autoUnlatch", setAutoUnlatch);
-                this.config.set("pairingEnabled", setPairingEnabled);
-                this.config.set("buttonEnabled", setButtonEnabled);
-                this.config.set("ledFlashEnabled", setLedFlashEnabled);
-                this.config.set("ledBrightness", setLedBrightness);
-                this.config.set("timezoneOffset", setTimezoneOffset);
-                this.config.set("dstMode", setDstMode);
-                this.config.set("fobAction1", setFobAction1);
-                this.config.set("fobAction2", setFobAction2);
-                this.config.set("fobAction3", setFobAction3);
-                this.config.set("adminPin", setPin);
-                await this.config.save();
-                this.state = {
-                    key: "Initial"
-                };
-                return this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_COMPLETE]), authorizationId, nonceABF, sharedSecret);
-            case CMD_VERIFY_PIN:
-                if (this.state.key !== "ChallengeSent") {
-                    return this.buildError(ERROR_UNKNOWN, cmdId, `unexpected state ${this.state.key} for command ${cmdId}`);
-                }
-                console.log("CL sent CMD_VERIFY_PIN", payload.toString("hex"), payload.length);
-                const nonce2 = payload.slice(0, 32);
-                if (Buffer.compare(this.state.challenge, nonce2) !== 0) {
-                    console.log("ERROR: nonce differ");
-                    console.log(this.state.challenge.toString("hex"), nonce2.toString("hex"));
-                    return this.buildError(K_ERROR_BAD_NONCE, cmdId, "ERROR: nonce differ");
-                }
-                const pin = payload.readUInt16LE(32);
-                console.log("PIN ", pin);
-                const savedPin = this.config.get("adminPin");
-                if (savedPin) {
-                    if (savedPin === pin) {
-                        console.log("PIN verified ok");
                         this.state = {
                             key: "Initial"
                         };
-                        return this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_COMPLETE]), authorizationId, nonceABF, sharedSecret);
-                    } else {
-                        return this.buildError(K_ERROR_BAD_PIN, cmdId, "ERROR: pin not ok. Saved: " + savedPin + ", given: " + pin);
-                    }
-                } else {
-                    this.config.setNukiState(NUKI_STATE_DOOR_MODE); // TODO: why?
-                    this.state = {
-                        key: "Initial"
-                    };
-                    return this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_COMPLETE]), authorizationId, nonceABF, sharedSecret);
-                }
-            case CMD_REQUEST_ADVANCED_CONFIG:
-                if (this.state.key !== "ChallengeSent") {
-                    return this.buildError(ERROR_UNKNOWN, cmdId, `unexpected state ${this.state.key} for command ${cmdId}`);
-                }
-                console.log("CL sent CMD_REQUEST_ADVANCED_CONFIG");
-
-                const advConfig = Buffer.alloc(28);
-                this.state = {
-                    key: "Initial"
-                }
-                return this.buildEncryptedMessage(CMD_ADVANCED_CONFIG, advConfig, authorizationId, nonceABF, sharedSecret);
-            case CMD_UPDATE_TIME:
-                if (this.state.key !== "ChallengeSent") {
-                    return this.buildError(ERROR_UNKNOWN, cmdId, `unexpected state ${this.state.key} for command ${cmdId}`);
-                }
-                this.state = {
-                    key: "Initial"
-                };
-                return this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_COMPLETE]), authorizationId, nonceABF, sharedSecret);
-            case CMD_LOCK_ACTION:
-                console.log("CL sent CMD_LOCK_ACTION");
-                if (this.state.key !== "ChallengeSent") {
-                    return this.buildError(ERROR_UNKNOWN, cmdId, `unexpected state ${this.state.key} for command ${cmdId}`);
-                }
-                const lockAction = payload.readUInt8(0);
-                const appId = payload.readUInt32LE(1);
-                const flags = payload.readUInt8(5);
-                // nonce = payload.slice(6, 6 + 32);
-                let action = lockAction;
-                const currentLockState = this.config.getLockState();
-                if (lockAction === LOCK_ACTION_FOB_ACTION_1 || lockAction === LOCK_ACTION_FOB_ACTION_2 || lockAction === LOCK_ACTION_FOB_ACTION_3) {
-                    const fobAction = this.config.get(`fobAction${lockAction & 0xf}`);
-                    switch (fobAction) {
-                        case FOB_ACTION_UNLOCK:
-                            action = LOCK_ACTION_UNLOCK;
-                            break;
-                        case FOB_ACTION_LOCK:
-                            action = LOCK_ACTION_LOCK;
-                            break;
-                        case FOB_ACTION_LOCKNGO:
-                            action = LOCK_ACTION_LOCKNGO;
-                            break;
-                        case FOB_ACTION_INTELLIGENT:
-                            if (currentLockState === LOCK_STATE_LOCKED) {
-                                action = LOCK_ACTION_UNLOCK;
-                            } else {
-                                if (currentLockState === LOCK_STATE_UNLOCKED || currentLockState === LOCK_STATE_UNLATCHED) {
-                                    action = LOCK_ACTION_LOCK;
-                                }
-                            }
-                            break;
-                        case FOB_ACTION_NONE:
-                        default:
-                            this.state = {
-                                key: "Initial"
-                            };
-                            return this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_COMPLETE]), authorizationId, nonceABF, sharedSecret);
-                    }
-
-                }
-                const transitions = [];
-                switch (action) {
-                    case LOCK_ACTION_UNLOCK:
-                        transitions.push(LOCK_STATE_UNLOCKING);
-                        transitions.push(LOCK_STATE_UNLOCKED);
-                        break;
-                    case LOCK_ACTION_LOCK:
-                        transitions.push(LOCK_STATE_LOCKING);
-                        transitions.push(LOCK_STATE_LOCKED);
-                        break;
-                    case LOCK_ACTION_UNLATCH:
-                        transitions.push(LOCK_STATE_UNLOCKING);
-                        transitions.push(LOCK_STATE_UNLOCKED);
-                        transitions.push(LOCK_STATE_UNLATCHED);
-                        transitions.push(LOCK_STATE_UNLOCKED);
-                        break;
-                    case LOCK_ACTION_LOCKNGO:
-                        transitions.push(LOCK_STATE_UNLOCKING);
-                        transitions.push(LOCK_STATE_UNLOCKED);
-                        transitions.push(LOCK_STATE_LOCKING);
-                        transitions.push(LOCK_STATE_LOCKED);
-                        break;
-                    case LOCK_ACTION_LOCKNGO_WITH_UNLATCH:
-                        transitions.push(LOCK_STATE_UNLOCKING)
-                        transitions.push(LOCK_STATE_UNLOCKED);
-                        transitions.push(LOCK_STATE_UNLATCHED);
-                        transitions.push(LOCK_STATE_LOCKING);
-                        transitions.push(LOCK_STATE_LOCKED);
-                        break;
-                    case LOCK_ACTION_FULL_LOCK:
-                        transitions.push(LOCK_STATE_LOCKING);
-                        transitions.push(LOCK_STATE_LOCKED);
-                        break;
-                    default:
-                        return this.buildError(K_ERROR_BAD_PARAMETER, cmdId, "ERROR: lock action sent with unknown lock action (" + lockAction + "). Ignoring.");
-                }
-                if (transitions.length > 0) {
-                    await this.sendIndication(this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_ACCEPTED]), authorizationId, nonceABF, sharedSecret));
+                        return new StatusCommand(STATUS_COMPLETE);
                 }
 
-                await this.sleep(2);
+            }
+            const transitions = [];
+            switch (action) {
+                case LOCK_ACTION_UNLOCK:
+                    transitions.push(LOCK_STATE_UNLOCKING);
+                    transitions.push(LOCK_STATE_UNLOCKED);
+                    break;
+                case LOCK_ACTION_LOCK:
+                    transitions.push(LOCK_STATE_LOCKING);
+                    transitions.push(LOCK_STATE_LOCKED);
+                    break;
+                case LOCK_ACTION_UNLATCH:
+                    transitions.push(LOCK_STATE_UNLOCKING);
+                    transitions.push(LOCK_STATE_UNLOCKED);
+                    transitions.push(LOCK_STATE_UNLATCHED);
+                    transitions.push(LOCK_STATE_UNLOCKED);
+                    break;
+                case LOCK_ACTION_LOCKNGO:
+                    transitions.push(LOCK_STATE_UNLOCKING);
+                    transitions.push(LOCK_STATE_UNLOCKED);
+                    transitions.push(LOCK_STATE_LOCKING);
+                    transitions.push(LOCK_STATE_LOCKED);
+                    break;
+                case LOCK_ACTION_LOCKNGO_WITH_UNLATCH:
+                    transitions.push(LOCK_STATE_UNLOCKING)
+                    transitions.push(LOCK_STATE_UNLOCKED);
+                    transitions.push(LOCK_STATE_UNLATCHED);
+                    transitions.push(LOCK_STATE_LOCKING);
+                    transitions.push(LOCK_STATE_LOCKED);
+                    break;
+                case LOCK_ACTION_FULL_LOCK:
+                    transitions.push(LOCK_STATE_LOCKING);
+                    transitions.push(LOCK_STATE_LOCKED);
+                    break;
+                default:
+                    return new ErrorCommand(K_ERROR_BAD_PARAMETER, command.id, "ERROR: lock action sent with unknown lock action (" + lockAction + "). Ignoring.");
+            }
+            if (transitions.length > 0) {
+                await this.sendCommand(new StatusCommand(STATUS_ACCEPTED), encryptionContext);
+            }
 
-                for (const nextState of transitions) {
-                    this.config.setLockState(nextState);
-                    await this.sendIndication(this.buildStateMessage(authorizationId, nonceABF, sharedSecret));
-                    await this.sleep(1);
-                }
+            await this.sleep(2);
 
-                await this.config.save();
+            for (const nextState of transitions) {
+                this.config.setLockState(nextState);
+                await this.sendCommand(this.buildStateCommand(), encryptionContext);
+                await this.sleep(1);
+            }
 
-                this.state = {
-                    key: "Initial"
-                }
-                return this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_COMPLETE]), authorizationId, nonceABF, sharedSecret);
-            case CMD_REQUEST_CALIBRATION:
-                console.log("CL sent CMD_REQUEST_CALIBRATION");
-                if (this.state.key !== "ChallengeSent") {
-                    return this.buildError(ERROR_UNKNOWN, cmdId, `unexpected state ${this.state.key} for command ${cmdId}`);
-                }
-                const nonce4 = payload.slice(0, 32);
-                if (Buffer.compare(this.state.challenge, nonce4) !== 0) {
-                    return this.buildError(K_ERROR_BAD_NONCE, cmdId, "ERROR: nonce differ");
-                }
-                const pin2 = payload.readUInt16LE(32);
-                console.log("PIN ", pin2);
-                const savedPin2 = this.config.get("adminPin");
-                if (savedPin2 && savedPin2 !== pin2) {
-                    return this.buildError(K_ERROR_BAD_PIN, cmdId, "ERROR: pin not ok. Saved: " + savedPin2 + ", given: " + pin2);
-                }
-                console.log("PIN verified ok");
-                await this.sendIndication(this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_ACCEPTED]), authorizationId, nonceABF, sharedSecret));
-                await this.sleep(2);
-                // TODO: calibration status updates
-                this.config.setLockState(LOCK_STATE_LOCKED);
-                await this.config.save();
-                this.state = {
-                    key: "Initial"
-                };
-                return this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_COMPLETE]), authorizationId, nonceABF, sharedSecret);
-            case CMD_SET_PIN:
-                console.log("CL sent CMD_SET_PIN");
-                if (this.state.key !== "ChallengeSent") {
-                    return this.buildError(ERROR_UNKNOWN, cmdId, `unexpected state ${this.state.key} for command ${cmdId}`);
-                }
-                const nonce5 = payload.slice(2, 2 + 32);
-                if (Buffer.compare(this.state.challenge, nonce5) !== 0) {
-                    return this.buildError(K_ERROR_BAD_NONCE, cmdId, "ERROR: nonce differ");
-                }
-                const newPin = payload.readUInt16LE(0);
-                const oldPin = payload.readUInt16LE(32 + 2);
-                console.log("old PIN ", oldPin);
-                console.log("new PIN ", newPin);
-                const savedPin3 = this.config.get("adminPin");
-                if (savedPin3 && savedPin3 !== oldPin) {
-                    return this.buildError(K_ERROR_BAD_PIN, cmdId, "ERROR: pin not ok. Saved: " + savedPin3 + ", given: " + oldPin);
-                }
-                console.log("old PIN verified ok");
-                this.config.set('adminPin', newPin);
-                console.log("set new Pin: ", newPin);
-                await this.config.save();
-                this.state = {
-                    key: "Initial"
-                };
-                return this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_COMPLETE]), authorizationId, nonceABF, sharedSecret);
-            case CMD_REMOVE_AUTHORIZATION_ENTRY:
-                console.log("CL sent CMD_REMOVE_AUTHORIZATION_ENTRY");
-                if (this.state.key !== "ChallengeSent") {
-                    return this.buildError(ERROR_UNKNOWN, cmdId, `unexpected state ${this.state.key} for command ${cmdId}`);
-                }
+            await this.config.save();
 
-                const authIdToRemove = payload.readUInt32LE(0);
-                const nonce6 = payload.slice(4, 4 + 32);
-                if (Buffer.compare(this.state.challenge, nonce6) !== 0) {
-                    return this.buildError(K_ERROR_BAD_NONCE, cmdId, "ERROR: nonce differ");
-                }
-                const pin4 = payload.readUInt16LE(4 + 32);
-                console.log("PIN ", pin4);
-                const savedPin4 = this.config.get("adminPin");
-                if (savedPin4 && savedPin4 !== pin4) {
-                    return this.buildError(K_ERROR_BAD_PIN, cmdId, "ERROR: pin not ok. Saved: " + savedPin4 + ", given: " + pin4);
-                }
-                console.log("PIN verified ok");
-                const userRoRemove = users[authIdToRemove];
-                if (userRoRemove) {
-                    delete users[authIdToRemove];
-                }
-                this.state = {
-                    key: "Initial"
-                }
-                return this.buildEncryptedMessage(CMD_STATUS, new Buffer([STATUS_COMPLETE]), authorizationId, nonceABF, sharedSecret);
-            default:
-                return this.buildError(ERROR_UNKNOWN, cmdId, `bad command ${cmdId}`);
+            this.state = {
+                key: "Initial"
+            }
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof RequestCalibrationCommand) {
+            console.log("CL sent CMD_REQUEST_CALIBRATION");
+            if (this.state.key !== "ChallengeSent") {
+                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+            }
+            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
+                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
+            }
+            console.log("PIN ", command.securityPin);
+            const savedPin2 = this.config.get("adminPin");
+            if (savedPin2 && savedPin2 !== command.securityPin) {
+                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: pin not ok. Saved: " + savedPin2 + ", given: " + command.securityPin);
+            }
+            console.log("PIN verified ok");
+            await this.sendCommand(new StatusCommand(STATUS_ACCEPTED), encryptionContext);
+            await this.sleep(2);
+            // TODO: calibration status updates
+            this.config.setLockState(LOCK_STATE_LOCKED);
+            await this.config.save();
+            this.state = {
+                key: "Initial"
+            };
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof SetSecurityPinCommand) {
+            console.log("CL sent CMD_SET_PIN");
+            if (this.state.key !== "ChallengeSent") {
+                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+            }
+            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
+                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
+            }
+            console.log("old PIN ", command.securityPin);
+            console.log("new PIN ", command.pin);
+            const savedPin3 = this.config.get("adminPin");
+            if (savedPin3 && savedPin3 !== command.securityPin) {
+                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: pin not ok. Saved: " + savedPin3 + ", given: " + command.securityPin);
+            }
+            console.log("old PIN verified ok");
+            this.config.set('adminPin', command.pin);
+            console.log("set new Pin: ", command.pin);
+            await this.config.save();
+            this.state = {
+                key: "Initial"
+            };
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof RemoveAuthorizationEntryCommand) {
+            console.log("CL sent CMD_REMOVE_AUTHORIZATION_ENTRY");
+            if (this.state.key !== "ChallengeSent") {
+                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+            }
+            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
+                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
+            }
+            console.log("PIN ", command.securityPin);
+            const savedPin4 = this.config.get("adminPin");
+            if (savedPin4 && savedPin4 !== command.securityPin) {
+                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: pin not ok. Saved: " + savedPin4 + ", given: " + command.securityPin);
+            }
+            console.log("PIN verified ok");
+            this.config.removeUser(command.authorizationId);
+            await this.config.save();
+            this.state = {
+                key: "Initial"
+            }
+            return new StatusCommand(STATUS_COMPLETE);
+        } else {
+            return new ErrorCommand(ERROR_UNKNOWN, command.id, `bad command ${command.id}`);
         }
     }
 
-    protected buildError(code: number, cmd: number, info: string): Buffer {
-        this.state = {
-            key: "Initial"
-        };
-        return super.buildError(code, cmd, info);
+    private buildStateCommand(): KeyturnerStatesCommand {
+        return new KeyturnerStatesCommand(
+            this.config.getNukiState(),
+            this.config.getLockState(),
+            0, // bluetooth
+            new Date(),
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
     }
 
-    private buildStateMessage(authId: number, nonce: Buffer, sharedSecret: Buffer) {
-        const nukiState = new Buffer(1);
-        nukiState.writeUInt8(this.config.getNukiState(), 0);
-
-        const lockState = new Buffer(1);
-        lockState.writeUInt8(this.config.getLockState(), 0);
-
-        const trigger = new Buffer(1);
-        trigger.writeUInt8(0, 0);  // bluetooth
-
-        const d = new Date();
-        const currentTimeBuffer = new Buffer(7);
-        currentTimeBuffer.writeUInt16LE(d.getFullYear(), 0);
-        currentTimeBuffer.writeUInt8(d.getMonth() + 1, 2);
-        currentTimeBuffer.writeUInt8(d.getDate(), 3);
-        currentTimeBuffer.writeUInt8(d.getHours(), 4);
-        currentTimeBuffer.writeUInt8(d.getMinutes(), 5);
-        currentTimeBuffer.writeUInt8(d.getSeconds(), 6);
-
-        const timezoneOffset = new Buffer(2);
-        timezoneOffset.writeInt16LE(d.getTimezoneOffset(), 0);
-
-        const criticalBatteryState = new Buffer(1);
-        criticalBatteryState.writeUInt8(0, 0); // ok
-
-        const nukiStates = Buffer.concat([nukiState, lockState, trigger, currentTimeBuffer, timezoneOffset, criticalBatteryState]);
-
-        return this.buildEncryptedMessage(CMD_NUKI_STATES, nukiStates, authId, nonce, sharedSecret);
+    private async sendCommand(command: Command, encryptionContext: EncryptionContext): Promise<void> {
+        await this.sendIndication(this.encryptCommand(command, encryptionContext.authorizationId, encryptionContext.nonce, encryptionContext.sharedSecret));
     }
 
-    private buildEncryptedMessage(cmd: number, payload: Buffer, authId: number, nonce: Buffer, sharedSecret: Buffer): Buffer {
+    private encryptCommand(command: Command, authId: number, nonce: Buffer, sharedSecret: Buffer): Buffer {
         const authIdBuffer = Buffer.alloc(4);
         authIdBuffer.writeUInt32LE(authId, 0);
         const cmdBuffer = Buffer.alloc(2);
-        cmdBuffer.writeUInt16LE(cmd, 0);
-        const responseData = Buffer.concat([authIdBuffer, cmdBuffer, payload, Buffer.alloc(2)]);
+        cmdBuffer.writeUInt16LE(command.id, 0);
+        const responseData = Buffer.concat([authIdBuffer, cmdBuffer, command.encode(), Buffer.alloc(2)]);
         setCrc(responseData);
-        //console.log("will encrypt", responseData.toString("hex"), responseData.length);
+
+        // console.log("will encrypt", responseData.toString("hex"), responseData.length);
 
         const pDataEncrypted = encrypt(responseData, nonce, sharedSecret);
 

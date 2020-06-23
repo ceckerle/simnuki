@@ -1,0 +1,61 @@
+import {Command} from "./Command";
+import {CMD_LOG_ENTRY, ERROR_BAD_LENGTH} from "./Constants";
+import {DecodingError} from "./DecodingError";
+import {readString, writeString, readDateTime, writeDateTime} from "./Util";
+
+export class LogEntryCommand extends Command {
+    
+    readonly id = CMD_LOG_ENTRY;
+    index: number;
+    timestamp: Date;
+    authorizationId: number;
+    name: string;
+    type: number;
+    data: Buffer;
+
+    constructor(index?: number, timestamp?: Date, authorizationId?: number, name?: string, type?: number, data?: Buffer) {
+        super();
+        this.index = index ?? 0;
+        this.timestamp = timestamp ?? new Date();
+        this.authorizationId = authorizationId ?? 0;
+        this.name = name ?? "";
+        this.type = type ?? 0;
+        this.data = data ?? Buffer.alloc(0);
+    }
+    
+    decode(buffer: Buffer): void {
+        if (buffer.length < 20) {
+            throw new DecodingError(ERROR_BAD_LENGTH);
+        }
+        let ofs = 0;
+        this.index = buffer.readUInt32LE(ofs);
+        ofs += 4;
+        this.timestamp = readDateTime(buffer, ofs);
+        ofs += 7;
+        this.authorizationId = buffer.readUInt32LE(ofs);
+        ofs += 4;
+        this.name = readString(buffer, ofs, 32);
+        ofs += 32;
+        this.type = buffer.readUInt8(ofs);
+        ofs += 1;
+        this.data = buffer.slice(ofs, buffer.length);
+    }
+
+    encode(): Buffer {
+        const buffer = Buffer.alloc(48 + this.data.length);
+        let ofs = 0;
+        buffer.writeUInt32LE(this.index, ofs);
+        ofs += 4;
+        writeDateTime(buffer, this.timestamp, ofs);
+        ofs += 7;
+        buffer.writeUInt32LE(this.authorizationId, ofs);
+        ofs += 4;
+        writeString(buffer, this.name, ofs, 32);
+        ofs += 32;
+        buffer.writeUInt8(this.type, ofs);
+        ofs += 1;
+        this.data.copy(buffer, ofs);
+        return buffer;
+    }
+    
+}

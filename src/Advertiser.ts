@@ -35,8 +35,9 @@ export class Advertiser {
                 for (let i = 0; i < uuidReverseBuf.length; i++) {
                     uuidReverseBuf[i] = uuidBuf[uuidBuf.length - i - 1];
                 }
-                const nullBuf = new Buffer([0, 0, 0, 0]);
-                const advDataBuf = Buffer.concat([typeBuf, uuidReverseBuf, nullBuf]);
+                const nukiIdBuf = Buffer.alloc(4);
+                nukiIdBuf.writeUInt32BE(parseInt(this.nukiIdStr, 16), 0);
+                const advDataBuf = Buffer.concat([typeBuf, uuidReverseBuf, nukiIdBuf]);
                 const len = advDataBuf.length;
                 // console.log("Length of adv data: " + len);
                 const lenBuf = Buffer.alloc(1);
