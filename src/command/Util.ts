@@ -42,14 +42,14 @@ export function readDateTime(buffer: Buffer, offset = 0): Date {
     const minute = buffer.readUInt8(offset++);
     const hour = buffer.readUInt8(offset++);
     const second = buffer.readUInt8(offset++);
-    return new Date(year, month, day - 1, minute, hour, second);
+    return new Date(year, month - 1, day, minute, hour, second);
 }
 
 export function writeDateTime(buffer: Buffer, date: Date, offset = 0): void {
     buffer.writeUInt16LE(date.getFullYear(), offset);
     offset += 2;
-    buffer.writeUInt8(date.getMonth(), offset++);
-    buffer.writeUInt8(date.getDate() + 1, offset++);
+    buffer.writeUInt8(date.getMonth() + 1, offset++);
+    buffer.writeUInt8(date.getDate(), offset++);
     buffer.writeUInt8(date.getHours(), offset++);
     buffer.writeUInt8(date.getMinutes(), offset++);
     buffer.writeUInt8(date.getSeconds(), offset++);
