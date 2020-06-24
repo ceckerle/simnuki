@@ -58,7 +58,7 @@ export class ConfigCommand extends Command {
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== 74) {
+        if (buffer.length !== 72) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
@@ -105,12 +105,13 @@ export class ConfigCommand extends Command {
         this.hardwareRevision = buffer.readUInt16LE(ofs);
         ofs += 2;
         this.homekitStatus = buffer.readUInt8(ofs);
-        ofs += 1;
-        this.timezoneId = buffer.readUInt16LE(ofs);
+        // TODO: iOS app does not like this
+        // ofs += 1;
+        // this.timezoneId = buffer.readUInt16LE(ofs);
     }
 
     encode(): Buffer {
-        const buffer = Buffer.alloc(74);
+        const buffer = Buffer.alloc(72);
         let ofs = 0;
         buffer.writeUInt32LE(this.nukiId, ofs);
         ofs += 4;
@@ -155,8 +156,9 @@ export class ConfigCommand extends Command {
         buffer.writeUInt16LE(this.hardwareRevision, ofs);
         ofs += 2;
         buffer.writeUInt8(this.homekitStatus, ofs);
-        ofs += 1;
-        buffer.writeUInt16LE(this.timezoneId, ofs);
+        // TODO: iOS app does not like this
+        // ofs += 1;
+        // buffer.writeUInt16LE(this.timezoneId, ofs);
         return buffer;
     }
     

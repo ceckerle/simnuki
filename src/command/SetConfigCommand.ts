@@ -48,7 +48,7 @@ export class SetConfigCommand extends Command {
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== 89) {
+        if (buffer.length !== 87) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
@@ -82,15 +82,16 @@ export class SetConfigCommand extends Command {
         ofs += 1;
         this.advertisingMode = buffer.readUInt8(ofs);
         ofs += 1;
-        this.timezoneId = buffer.readUInt16LE(ofs);
-        ofs += 2;
+        // TODO: iOS app does not like this
+        // this.timezoneId = buffer.readUInt16LE(ofs);
+        // ofs += 2;
         this.nonce = buffer.slice(ofs, ofs + 32);
         ofs += 32;
         this.securityPin = buffer.readUInt16LE(ofs);
     }
 
     encode(): Buffer {
-        const buffer = Buffer.alloc(89);
+        const buffer = Buffer.alloc(87);
         let ofs = 0;
         writeString(buffer, this.name, ofs, 32);
         ofs += 32;
@@ -122,8 +123,9 @@ export class SetConfigCommand extends Command {
         ofs += 1;
         buffer.writeUInt8(this.advertisingMode, ofs);
         ofs += 1;
-        buffer.writeUInt16LE(this.timezoneId, ofs);
-        ofs += 2;
+        // TODO: iOS app does not like this
+        // buffer.writeUInt16LE(this.timezoneId, ofs);
+        // ofs += 2;
         this.nonce.copy(buffer, ofs);
         ofs += 32;
         buffer.writeUInt16LE(this.securityPin, ofs);
