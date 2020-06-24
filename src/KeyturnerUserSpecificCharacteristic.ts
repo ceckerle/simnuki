@@ -20,9 +20,9 @@ import {decodeCommand} from "./command/Codec";
 import {
     CMD_CHALLENGE,
     CMD_FIRMWARE_STATUS,
-    CMD_KEYTURNER_STATES, ERROR_BAD_CRC,
+    CMD_KEYTURNER_STATES, ERROR_BAD_CRC, ERROR_BAD_LENGTH,
     ERROR_UNKNOWN,
-    K_ERROR_BAD_NONCE, K_ERROR_BAD_PARAMETER, K_ERROR_BAD_PIN, STATUS_ACCEPTED, STATUS_COMPLETE
+    K_ERROR_BAD_NONCE, K_ERROR_BAD_PARAMETER, K_ERROR_BAD_PIN, K_ERROR_INVALID_AUTH_ID, STATUS_ACCEPTED, STATUS_COMPLETE
 } from "./command/Constants";
 import {Command} from "./command/Command";
 import {RequestDataCommand} from "./command/RequestDataCommand";
@@ -44,6 +44,7 @@ import {SetSecurityPinCommand} from "./command/SetSecurityPinCommand";
 import {RemoveAuthorizationEntryCommand} from "./command/RemoveAuthorizationEntryCommand";
 import {KeyturnerStatesCommand} from "./command/KeyturnerStatesCommand";
 import {checkCrc, setCrc} from "./command/Util";
+import {SetAdvancedConfigCommand} from "./command/SetAdvancedConfigCommand";
 
 interface KeyturnerStateInitial {
     key: "Initial"
@@ -73,30 +74,39 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
     }
 
     async handleRequest(data: Buffer): Promise<Buffer> {
-        // TODO: check length
+        if (data.length < 38) {
+            return this.buildError(ERROR_BAD_LENGTH, 0, "bad length");
+        }
 
         const nonceABF = data.slice(0, 24);
         const authorizationId = data.readUInt32LE(24);
         const commandLen = data.readUInt16LE(28);
         const encryptedCommand = data.slice(30);
+        if (encryptedCommand.length !== commandLen) {
+            return this.buildError(ERROR_BAD_LENGTH, 0, "bad encrypted command length");
+        }
 
-        const users = this.config.get("users") || {};
 
-        const user = users[authorizationId];
+        const user = this.config.getUser(authorizationId);
         if (!user) {
-            console.log("bad user");
-            return this.buildError(ERROR_UNKNOWN, 0, "bad user");
+            return this.buildError(K_ERROR_INVALID_AUTH_ID, 0, "bad user");
         }
 
         const sharedSecret = new Buffer(user.sharedSecret, "hex");
 
         const decryptedCommand = decrypt(Buffer.concat([encryptedCommand]), nonceABF, sharedSecret);
+        if (!decryptedCommand) {
+            return this.buildError(ERROR_UNKNOWN, 0, "bad encryption");
+        }
 
         if (!checkCrc(decryptedCommand)) {
             return this.buildError(ERROR_BAD_CRC, 0, "bad crc");
         }
 
         const authorizationIdFromEncryptedCommand = decryptedCommand.readUInt32LE(0);
+        if (authorizationIdFromEncryptedCommand !== authorizationId) {
+            return this.buildError(K_ERROR_INVALID_AUTH_ID, 0, "invalid encrypted command auth id");
+        }
 
         const encryptionContext = {
             authorizationId,
@@ -119,6 +129,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
             }
             return this.encryptCommand(response, authorizationId, nonceABF, sharedSecret);
         } catch (e) {
+            console.log(decryptedCommand.slice(4).toString("hex"));
             console.log(e);
             this.state = {
                 key: "Initial"
@@ -146,8 +157,10 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                     }
                     return challenge;
                 case CMD_KEYTURNER_STATES:
+                    console.log("CL requests keyturner states");
                     return this.buildStateCommand();
                 case CMD_FIRMWARE_STATUS:
+                    console.log("CL requests firmware status");
                     return new FirmwareStatusCommand(0x010203);
                 default:
                     return new ErrorCommand(ERROR_UNKNOWN, command.id, `bad request data ${command.commandId}`);
@@ -193,11 +206,11 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
             if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
                 return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
             }
-            if (command.securityPin !== this.config.get("adminPin")) {
-                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: bad pin");
+            if (command.securityPin !== this.config.getAdminPin()) {
+                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, `ERROR: bad pin ${command.securityPin}`);
             }
 
-            this.config.set("name", command.name);
+            this.config.setName(command.name);
             this.config.set("latitude", command.latitude);
             this.config.set("longitude", command.longitude);
             this.config.set("autoUnlatch", command.autoUnlatch);
@@ -229,8 +242,8 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
             console.log("PIN ", command.securityPin);
 
-            if (command.securityPin !== this.config.get("adminPin")) {
-                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: bad pin");
+            if (command.securityPin !== this.config.getAdminPin()) {
+                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, `ERROR: bad pin ${command.securityPin}`);
             }
 
             // TODO: why? this.config.setNukiState(NUKI_STATE_DOOR_MODE);
@@ -243,14 +256,29 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
             }
             console.log("CL sent CMD_REQUEST_ADVANCED_CONFIG");
 
+            // TODO: implement
+
             this.state = {
                 key: "Initial"
             }
             return new AdvancedConfigCommand();
+        } else if (command instanceof SetAdvancedConfigCommand) {
+            if (this.state.key !== "ChallengeSent") {
+                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+            }
+            console.log("CL sent CMD_SET_ADVANCED_CONFIG");
+
+            // TODO: implement
+
+            this.state = {
+                key: "Initial"
+            }
+            return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof UpdateTimeCommand) {
             if (this.state.key !== "ChallengeSent") {
                 return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
             }
+            console.log("CL sent CMD_UPDATE_TIME");
             this.state = {
                 key: "Initial"
             };
@@ -357,7 +385,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
             }
             console.log("PIN ", command.securityPin);
-            const savedPin2 = this.config.get("adminPin");
+            const savedPin2 = this.config.getAdminPin();
             if (savedPin2 && savedPin2 !== command.securityPin) {
                 return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: pin not ok. Saved: " + savedPin2 + ", given: " + command.securityPin);
             }
@@ -381,12 +409,12 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
             }
             console.log("old PIN ", command.securityPin);
             console.log("new PIN ", command.pin);
-            const savedPin3 = this.config.get("adminPin");
+            const savedPin3 = this.config.getAdminPin();
             if (savedPin3 && savedPin3 !== command.securityPin) {
                 return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: pin not ok. Saved: " + savedPin3 + ", given: " + command.securityPin);
             }
             console.log("old PIN verified ok");
-            this.config.set('adminPin', command.pin);
+            this.config.setAdminPin(command.pin);
             console.log("set new Pin: ", command.pin);
             await this.config.save();
             this.state = {
@@ -402,7 +430,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
             }
             console.log("PIN ", command.securityPin);
-            const savedPin4 = this.config.get("adminPin");
+            const savedPin4 = this.config.getAdminPin();
             if (savedPin4 && savedPin4 !== command.securityPin) {
                 return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: pin not ok. Saved: " + savedPin4 + ", given: " + command.securityPin);
             }

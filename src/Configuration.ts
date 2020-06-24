@@ -115,6 +115,14 @@ export class Configuration {
         this.set("users", users);
     }
 
+    public getAdminPin(): number {
+        return this.get("adminPin") ?? 0;
+    }
+
+    public setAdminPin(adminPin: number): void {
+        this.set("adminPin", adminPin);
+    }
+
     public get(key: string): any {
         return this.config.get(key);
     }
