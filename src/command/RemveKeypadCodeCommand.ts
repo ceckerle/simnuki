@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_REMVE_KEYPAD_CODE, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class RemveKeypadCodeCommand extends Command {
+export class RemveKeypadCodeCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_REMVE_KEYPAD_CODE;
     codeId: number;

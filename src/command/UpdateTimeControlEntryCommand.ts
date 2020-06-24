@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_UPDATE_TIME_CONTROL_ENTRY, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class UpdateTimeControlEntryCommand extends Command {
+export class UpdateTimeControlEntryCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_UPDATE_TIME_CONTROL_ENTRY;
     entryId: number;

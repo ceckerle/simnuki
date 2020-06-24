@@ -24,11 +24,11 @@ nonce,B,32
 !AuthorizationIdConfirmation,1e
 authenticator,B,32
 authorizationId,u,4
-!RemoveAuthorizationEntry,1
+!RemoveAuthorizationEntry,8,CommandNeedsSecurityPin
 authorizationId,u,4
 nonce,B,32
 securityPin,u,2
-!RequestAuthorizationEntries,9
+!RequestAuthorizationEntries,9,CommandNeedsSecurityPin
 offset,u,2
 count,u,2
 nonce,B,32
@@ -48,7 +48,7 @@ allowedUntilDate,D
 allowedWeekdays,u,1
 allowedFromTime,u,2
 allowedToTime,u,2
-!AuthorizationDataInvite,b
+!AuthorizationDataInvite,b,CommandNeedsSecurityPin
 name,s,32
 idType,u,1
 sharedKey,B,32
@@ -64,7 +64,7 @@ securityPin,u,2
 !AuthorizationIdInvite,1f
 authorizationId,u,4
 dateCreated,D
-!UpdateAuthorizationEntry,25
+!UpdateAuthorizationEntry,25,CommandNeedsSecurityPin
 authorizationId,u,4
 name,s,32
 enabled,u,1
@@ -91,7 +91,7 @@ lastLockAction,u,1
 lastLockActionTrigger,u,1
 lastLockActionCompletionState,u,1
 doorSensorState,u,1
-!LockAction,d
+!LockAction,d,CommandNeedsChallenge
 lockAction,u,1
 appId,u,4
 flags,u,1
@@ -120,7 +120,7 @@ batteryResistance,u,2
 !Error,12
 errorCode,u,1
 commandId,u,2
-!SetConfig,13
+!SetConfig,13,CommandNeedsSecurityPin
 name,s,32
 latitude,f,4
 longitude,f,4
@@ -139,7 +139,7 @@ advertisingMode,u,1
 timezoneId,u,2
 nonce,B,32
 securityPin,u,2
-!RequestConfig,14
+!RequestConfig,14,CommandNeedsChallenge
 nonce,B,32
 !Config,15
 nukiId,u,4
@@ -165,20 +165,20 @@ firmwareVersion,U,3
 hardwareRevision,u,2
 homekitStatus,u,1
 timezoneId,u,2
-!SetSecurityPin,19
+!SetSecurityPin,19,CommandNeedsSecurityPin
 pin,u,2
 nonce,B,32
 securityPin,u,2
-!VerifySecurityPin,20
+!VerifySecurityPin,20,CommandNeedsSecurityPin
 nonce,B,32
 securityPin,u,2
-!RequestCalibration,1a
+!RequestCalibration,1a,CommandNeedsSecurityPin
 nonce,B,32
 securityPin,u,2
-!RequestReboot,1d
+!RequestReboot,1d,CommandNeedsSecurityPin
 nonce,B,32
 securityPin,u,2
-!UpdateTime,21
+!UpdateTime,21,CommandNeedsSecurityPin
 time,D
 nonce,B,32
 securityPin,u,2
@@ -187,7 +187,7 @@ count,u,2
 !FirmwareStatus,29
 version,U,3
 data,B,5
-!RequestLogEntries,31
+!RequestLogEntries,31,CommandNeedsSecurityPin
 startIndex,u,4
 count,u,2
 sortOrder,u,1
@@ -206,11 +206,11 @@ loggingEnabled,u,1
 count,u,2
 doorSensorEnabled,u,1
 doorSensorLoggingEnabled,u,1
-!EnableLogging,34
+!EnableLogging,34,CommandNeedsSecurityPin
 enabled,u,1
 nonce,B,32
 securityPin,u,2
-!SetAdvancedConfig,35
+!SetAdvancedConfig,35,CommandNeedsSecurityPin
 unlockedPositionOffsetDegrees,i,2
 lockedPositionOffsetDegrees,i,2
 singleLockedPositionOffsetDegrees,i,2
@@ -232,7 +232,7 @@ nightmodeAutoUnlockDisabled,u,1
 nightmodeImmediateLockOnStart,u,1
 nonce,B,32
 securityPin,u,2
-!RequestAdvancedConfig,36
+!RequestAdvancedConfig,36,CommandNeedsChallenge
 nonce,B,32
 !AdvancedConfig,37
 totalDegrees,u,2
@@ -255,7 +255,7 @@ nightmodeEndTime,u,2
 nightmodeAutoLockEnabled,u,1
 nightmodeAutoUnlockDisabled,u,1
 nightmodeImmediateLockOnStart,u,1
-!AddTimeControlEntry,39
+!AddTimeControlEntry,39,CommandNeedsSecurityPin
 weekdays,u,1
 time,u,2
 lockAction,u,1
@@ -263,11 +263,11 @@ nonce,B,32
 securityPin,u,2
 !TimeControlEntryId,3a
 entryId,u,1
-!RemoveTimeControlEntry,3b
+!RemoveTimeControlEntry,3b,CommandNeedsSecurityPin
 entryId,u,1
 nonce,B,32
 securityPin,u,2
-!RequestTimeControlEntries,3c
+!RequestTimeControlEntries,3c,CommandNeedsSecurityPin
 nonce,B,32
 securityPin,u,2
 !TimeControlEntryCount,3d
@@ -278,7 +278,7 @@ enabled,u,1
 weekdays,u,1
 time,u,2
 lockAction,u,1
-!UpdateTimeControlEntry,3f
+!UpdateTimeControlEntry,3f,CommandNeedsSecurityPin
 entryId,u,1
 enabled,u,1
 weekdays,u,1
@@ -286,7 +286,7 @@ time,u,2
 lockAction,u,1
 nonce,B,32
 securityPin,u,2
-!AddKeypadCode,41
+!AddKeypadCode,41,CommandNeedsSecurityPin
 code,u,4
 name,s,20
 timeLimited,u,1
@@ -300,7 +300,7 @@ securityPin,u,2
 !KeypadCodeId,42
 codeId,u,2
 dateCreated,D
-!RequestKeypadCodes,43
+!RequestKeypadCodes,43,CommandNeedsSecurityPin
 offset,u,2
 count,u,2
 nonce,B,32
@@ -320,7 +320,7 @@ allowedUntilDate,D
 allowedWeekdays,u,1
 allowedFromTime,u,2
 allowedToTime,u,2
-!UpdateKeypadCode,46
+!UpdateKeypadCode,46,CommandNeedsSecurityPin
 codeId,u,2
 code,u,4
 name,s,20
@@ -330,16 +330,18 @@ allowedUntilDate,D
 allowedWeekdays,u,1
 allowedFromTime,u,2
 allowedToTime,u,2
-!RemveKeypadCode,47
+nonce,B,32
+securityPin,u,2
+!RemveKeypadCode,47,CommandNeedsSecurityPin
 codeId,u,2
 nonce,B,32
 securityPin,u,2
-!KeypadAction,48
+!KeypadAction,48,CommandNeedsChallenge
 source,u,1
 code,u,4
 action,u,1
 nonce,B,32
-!SimpleLockAction,100
+!SimpleLockAction,100,CommandNeedsChallenge
 lockAction,u,1
 nonce,B,32
 `;
@@ -394,13 +396,14 @@ function buildCommands() {
         const name = `${command[0][0]}Command`;
         const constName = `CMD_${camelCase(command[0][0])}`;
         const id = parseInt(command[0][1], 16);
+        const superClass = command[0].length > 2 ? command[0][2] : "Command";
         const props = command.slice(1).map(getPropInfo);
         const totalBytes = props.filter((p) => !isNaN(p.bytes)).reduce((sum, p) => sum + p.bytes, 0);
 
         consts += `export const ${constName} = 0x${id.toString(16).padStart(2, "0")};\n`;
         constClassPairs.push([constName, name]);
 
-        const c = `export class ${name} extends Command {
+        const c = `export class ${name} extends ${superClass} {
     
     readonly id = ${constName};
 ${props.map((p) => 
@@ -447,7 +450,7 @@ ${props.map((p, i) =>
             }
         }
         const imports: {[module: string]: string[]} = {
-            "./Command": ["Command"],
+            [`./${superClass}`]: [superClass],
             "./Constants": [constName, "ERROR_BAD_LENGTH"],
             "./DecodingError": ["DecodingError"],
             "./Util": usedUtilFunctions

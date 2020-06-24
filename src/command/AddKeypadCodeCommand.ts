@@ -1,9 +1,9 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_ADD_KEYPAD_CODE, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 import {readString, writeString, readDateTime, writeDateTime} from "./Util";
 
-export class AddKeypadCodeCommand extends Command {
+export class AddKeypadCodeCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_ADD_KEYPAD_CODE;
     code: number;

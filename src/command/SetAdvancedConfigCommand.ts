@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_SET_ADVANCED_CONFIG, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class SetAdvancedConfigCommand extends Command {
+export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_SET_ADVANCED_CONFIG;
     unlockedPositionOffsetDegrees: number;

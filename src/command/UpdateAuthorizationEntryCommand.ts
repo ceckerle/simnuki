@@ -1,9 +1,9 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_UPDATE_AUTHORIZATION_ENTRY, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 import {readString, writeString, readDateTime, writeDateTime} from "./Util";
 
-export class UpdateAuthorizationEntryCommand extends Command {
+export class UpdateAuthorizationEntryCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_UPDATE_AUTHORIZATION_ENTRY;
     authorizationId: number;

@@ -1,9 +1,9 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_AUTHORIZATION_DATA_INVITE, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 import {readString, writeString, readDateTime, writeDateTime} from "./Util";
 
-export class AuthorizationDataInviteCommand extends Command {
+export class AuthorizationDataInviteCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_AUTHORIZATION_DATA_INVITE;
     name: string;

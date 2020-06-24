@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_ADD_TIME_CONTROL_ENTRY, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class AddTimeControlEntryCommand extends Command {
+export class AddTimeControlEntryCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_ADD_TIME_CONTROL_ENTRY;
     weekdays: number;

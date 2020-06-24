@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsChallenge} from "./CommandNeedsChallenge";
 import {CMD_KEYPAD_ACTION, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class KeypadActionCommand extends Command {
+export class KeypadActionCommand extends CommandNeedsChallenge {
     
     readonly id = CMD_KEYPAD_ACTION;
     source: number;

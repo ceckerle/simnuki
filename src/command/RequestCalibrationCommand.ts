@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_REQUEST_CALIBRATION, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class RequestCalibrationCommand extends Command {
+export class RequestCalibrationCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_REQUEST_CALIBRATION;
     nonce: Buffer;

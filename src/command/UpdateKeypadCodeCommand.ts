@@ -1,9 +1,9 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_UPDATE_KEYPAD_CODE, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 import {readString, writeString, readDateTime, writeDateTime} from "./Util";
 
-export class UpdateKeypadCodeCommand extends Command {
+export class UpdateKeypadCodeCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_UPDATE_KEYPAD_CODE;
     codeId: number;
@@ -15,8 +15,10 @@ export class UpdateKeypadCodeCommand extends Command {
     allowedWeekdays: number;
     allowedFromTime: number;
     allowedToTime: number;
+    nonce: Buffer;
+    securityPin: number;
 
-    constructor(codeId?: number, code?: number, name?: string, timeLimited?: number, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number) {
+    constructor(codeId?: number, code?: number, name?: string, timeLimited?: number, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number, nonce?: Buffer, securityPin?: number) {
         super();
         this.codeId = codeId ?? 0;
         this.code = code ?? 0;
@@ -27,10 +29,12 @@ export class UpdateKeypadCodeCommand extends Command {
         this.allowedWeekdays = allowedWeekdays ?? 0;
         this.allowedFromTime = allowedFromTime ?? 0;
         this.allowedToTime = allowedToTime ?? 0;
+        this.nonce = nonce ?? Buffer.alloc(32);
+        this.securityPin = securityPin ?? 0;
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== 46) {
+        if (buffer.length !== 80) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
@@ -51,10 +55,14 @@ export class UpdateKeypadCodeCommand extends Command {
         this.allowedFromTime = buffer.readUInt16LE(ofs);
         ofs += 2;
         this.allowedToTime = buffer.readUInt16LE(ofs);
+        ofs += 2;
+        this.nonce = buffer.slice(ofs, ofs + 32);
+        ofs += 32;
+        this.securityPin = buffer.readUInt16LE(ofs);
     }
 
     encode(): Buffer {
-        const buffer = Buffer.alloc(46);
+        const buffer = Buffer.alloc(80);
         let ofs = 0;
         buffer.writeUInt16LE(this.codeId, ofs);
         ofs += 2;
@@ -73,6 +81,10 @@ export class UpdateKeypadCodeCommand extends Command {
         buffer.writeUInt16LE(this.allowedFromTime, ofs);
         ofs += 2;
         buffer.writeUInt16LE(this.allowedToTime, ofs);
+        ofs += 2;
+        this.nonce.copy(buffer, ofs);
+        ofs += 32;
+        buffer.writeUInt16LE(this.securityPin, ofs);
         return buffer;
     }
     

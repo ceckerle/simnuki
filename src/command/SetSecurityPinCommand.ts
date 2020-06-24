@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_SET_SECURITY_PIN, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class SetSecurityPinCommand extends Command {
+export class SetSecurityPinCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_SET_SECURITY_PIN;
     pin: number;

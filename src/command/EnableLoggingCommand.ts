@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_ENABLE_LOGGING, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class EnableLoggingCommand extends Command {
+export class EnableLoggingCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_ENABLE_LOGGING;
     enabled: number;

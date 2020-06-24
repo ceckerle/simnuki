@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_REQUEST_AUTHORIZATION_ENTRIES, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class RequestAuthorizationEntriesCommand extends Command {
+export class RequestAuthorizationEntriesCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_REQUEST_AUTHORIZATION_ENTRIES;
     offset: number;

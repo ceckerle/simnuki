@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_REQUEST_REBOOT, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class RequestRebootCommand extends Command {
+export class RequestRebootCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_REQUEST_REBOOT;
     nonce: Buffer;

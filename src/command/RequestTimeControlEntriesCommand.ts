@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_REQUEST_TIME_CONTROL_ENTRIES, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class RequestTimeControlEntriesCommand extends Command {
+export class RequestTimeControlEntriesCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_REQUEST_TIME_CONTROL_ENTRIES;
     nonce: Buffer;

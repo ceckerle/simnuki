@@ -1,9 +1,9 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_SET_CONFIG, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 import {readString, writeString} from "./Util";
 
-export class SetConfigCommand extends Command {
+export class SetConfigCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_SET_CONFIG;
     name: string;

@@ -46,6 +46,8 @@ import {RemoveAuthorizationEntryCommand} from "./command/RemoveAuthorizationEntr
 import {KeyturnerStatesCommand} from "./command/KeyturnerStatesCommand";
 import {checkCrc, setCrc} from "./command/Util";
 import {SetAdvancedConfigCommand} from "./command/SetAdvancedConfigCommand";
+import {CommandNeedsChallenge} from "./command/CommandNeedsChallenge";
+import {CommandNeedsSecurityPin} from "./command/CommandNeedsSecurityPin";
 
 interface KeyturnerStateInitial {
     key: "Initial"
@@ -144,10 +146,25 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
     }
 
     private async handleCommand(command: Command, encryptionContext: EncryptionContext): Promise<Command> {
-        if (command instanceof RequestDataCommand) {
-            if (this.state.key !== "Initial") {
+        if (command instanceof CommandNeedsChallenge) {
+            if (this.state.key !== "ChallengeSent") {
                 return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
             }
+            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
+                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
+            }
+            this.state = {
+                key: "Initial"
+            };
+        } else if (this.state.key !== "Initial") {
+            return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
+        }
+        if (command instanceof CommandNeedsSecurityPin) {
+            if (command.securityPin !== this.config.getAdminPin()) {
+                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, `ERROR: bad pin ${command.securityPin}`);
+            }
+        }
+        if (command instanceof RequestDataCommand) {
             switch (command.commandId) {
                 case CMD_CHALLENGE:
                     console.log("CL requests challenge");
@@ -167,18 +184,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                     return new ErrorCommand(ERROR_UNKNOWN, command.id, `bad request data ${command.commandId}`);
             }
         } else if (command instanceof RequestConfigCommand) {
-            if (this.state.key !== "ChallengeSent") {
-                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
-            }
             console.log("CL sent CMD_REQUEST_CONFIG");
-            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
-                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
-            }
-
-            this.state = {
-                key: "Initial"
-            };
-
             const now = new Date();
             return new ConfigCommand(
                 parseInt(this.config.getNukiIdStr(), 16),
@@ -206,18 +212,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 this.config.get("timezoneId") | 0
             );
         } else if (command instanceof SetConfigCommand) {
-            if (this.state.key !== "ChallengeSent") {
-                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
-            }
             console.log("CL sent CMD_SET_CONFIG");
-
-            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
-                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
-            }
-            if (command.securityPin !== this.config.getAdminPin()) {
-                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, `ERROR: bad pin ${command.securityPin}`);
-            }
-
             this.config.setName(command.name);
             this.config.set("latitude", command.latitude);
             this.config.set("longitude", command.longitude);
@@ -239,71 +234,34 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
             }
 
             await this.config.save();
-            this.state = {
-                key: "Initial"
-            };
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof VerifySecurityPinCommand) {
-            if (this.state.key !== "ChallengeSent") {
-                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
-            }
             console.log("CL sent CMD_VERIFY_PIN");
-
-            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
-                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
-            }
-            this.state = {
-                key: "Initial"
-            };
-
-            console.log("PIN ", command.securityPin);
-
-            if (command.securityPin !== this.config.getAdminPin()) {
-                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, `ERROR: bad pin ${command.securityPin}`);
-            }
 
             // TODO: why? this.config.setNukiState(NUKI_STATE_DOOR_MODE);
 
             console.log("PIN verified ok");
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof RequestAdvancedConfigCommand) {
-            if (this.state.key !== "ChallengeSent") {
-                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
-            }
             console.log("CL sent CMD_REQUEST_ADVANCED_CONFIG");
 
             // TODO: implement
 
-            this.state = {
-                key: "Initial"
-            }
             return new AdvancedConfigCommand();
         } else if (command instanceof SetAdvancedConfigCommand) {
-            if (this.state.key !== "ChallengeSent") {
-                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
-            }
             console.log("CL sent CMD_SET_ADVANCED_CONFIG");
 
             // TODO: implement
 
-            this.state = {
-                key: "Initial"
-            }
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof UpdateTimeCommand) {
-            if (this.state.key !== "ChallengeSent") {
-                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
-            }
             console.log("CL sent CMD_UPDATE_TIME");
-            this.state = {
-                key: "Initial"
-            };
+
+            // ignore
+
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof LockActionCommand) {
             console.log("CL sent CMD_LOCK_ACTION");
-            if (this.state.key !== "ChallengeSent") {
-                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
-            }
 
             const lockAction = command.lockAction;
             let action = lockAction;
@@ -331,9 +289,6 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                         break;
                     case FOB_ACTION_NONE:
                     default:
-                        this.state = {
-                            key: "Initial"
-                        };
                         return new StatusCommand(STATUS_COMPLETE);
                 }
 
@@ -388,74 +343,31 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
             await this.config.save();
 
-            this.state = {
-                key: "Initial"
-            }
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof RequestCalibrationCommand) {
             console.log("CL sent CMD_REQUEST_CALIBRATION");
-            if (this.state.key !== "ChallengeSent") {
-                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
-            }
-            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
-                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
-            }
-            console.log("PIN ", command.securityPin);
-            const savedPin2 = this.config.getAdminPin();
-            if (savedPin2 && savedPin2 !== command.securityPin) {
-                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: pin not ok. Saved: " + savedPin2 + ", given: " + command.securityPin);
-            }
-            console.log("PIN verified ok");
+
             await this.sendCommand(new StatusCommand(STATUS_ACCEPTED), encryptionContext);
             await this.sleep(2);
             // TODO: calibration status updates
             this.config.setLockState(LOCK_STATE_LOCKED);
             await this.config.save();
-            this.state = {
-                key: "Initial"
-            };
+
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof SetSecurityPinCommand) {
             console.log("CL sent CMD_SET_PIN");
-            if (this.state.key !== "ChallengeSent") {
-                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
-            }
-            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
-                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
-            }
-            console.log("old PIN ", command.securityPin);
-            console.log("new PIN ", command.pin);
-            const savedPin3 = this.config.getAdminPin();
-            if (savedPin3 && savedPin3 !== command.securityPin) {
-                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: pin not ok. Saved: " + savedPin3 + ", given: " + command.securityPin);
-            }
-            console.log("old PIN verified ok");
-            this.config.setAdminPin(command.pin);
+
             console.log("set new Pin: ", command.pin);
+            this.config.setAdminPin(command.pin);
             await this.config.save();
-            this.state = {
-                key: "Initial"
-            };
+
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof RemoveAuthorizationEntryCommand) {
             console.log("CL sent CMD_REMOVE_AUTHORIZATION_ENTRY");
-            if (this.state.key !== "ChallengeSent") {
-                return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
-            }
-            if (Buffer.compare(this.state.challenge, command.nonce) !== 0) {
-                return new ErrorCommand(K_ERROR_BAD_NONCE, command.id, "ERROR: nonce differ");
-            }
-            console.log("PIN ", command.securityPin);
-            const savedPin4 = this.config.getAdminPin();
-            if (savedPin4 && savedPin4 !== command.securityPin) {
-                return new ErrorCommand(K_ERROR_BAD_PIN, command.id, "ERROR: pin not ok. Saved: " + savedPin4 + ", given: " + command.securityPin);
-            }
-            console.log("PIN verified ok");
+
             this.config.removeUser(command.authorizationId);
             await this.config.save();
-            this.state = {
-                key: "Initial"
-            }
+
             return new StatusCommand(STATUS_COMPLETE);
         } else {
             return new ErrorCommand(ERROR_UNKNOWN, command.id, `bad command ${command.id}`);

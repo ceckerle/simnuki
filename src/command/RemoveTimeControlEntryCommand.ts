@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_REMOVE_TIME_CONTROL_ENTRY, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class RemoveTimeControlEntryCommand extends Command {
+export class RemoveTimeControlEntryCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_REMOVE_TIME_CONTROL_ENTRY;
     entryId: number;

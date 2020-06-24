@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsChallenge} from "./CommandNeedsChallenge";
 import {CMD_REQUEST_ADVANCED_CONFIG, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class RequestAdvancedConfigCommand extends Command {
+export class RequestAdvancedConfigCommand extends CommandNeedsChallenge {
     
     readonly id = CMD_REQUEST_ADVANCED_CONFIG;
     nonce: Buffer;

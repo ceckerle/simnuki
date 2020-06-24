@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsChallenge} from "./CommandNeedsChallenge";
 import {CMD_SIMPLE_LOCK_ACTION, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class SimpleLockActionCommand extends Command {
+export class SimpleLockActionCommand extends CommandNeedsChallenge {
     
     readonly id = CMD_SIMPLE_LOCK_ACTION;
     lockAction: number;

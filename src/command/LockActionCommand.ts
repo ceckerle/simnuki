@@ -1,9 +1,9 @@
-import {Command} from "./Command";
+import {CommandNeedsChallenge} from "./CommandNeedsChallenge";
 import {CMD_LOCK_ACTION, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 import {readString, writeString} from "./Util";
 
-export class LockActionCommand extends Command {
+export class LockActionCommand extends CommandNeedsChallenge {
     
     readonly id = CMD_LOCK_ACTION;
     lockAction: number;

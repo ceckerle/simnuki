@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_REMOVE_AUTHORIZATION_ENTRY, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class RemoveAuthorizationEntryCommand extends Command {
+export class RemoveAuthorizationEntryCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_REMOVE_AUTHORIZATION_ENTRY;
     authorizationId: number;

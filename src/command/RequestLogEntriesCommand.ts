@@ -1,8 +1,8 @@
-import {Command} from "./Command";
+import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_REQUEST_LOG_ENTRIES, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
 
-export class RequestLogEntriesCommand extends Command {
+export class RequestLogEntriesCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_REQUEST_LOG_ENTRIES;
     startIndex: number;
