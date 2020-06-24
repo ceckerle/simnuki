@@ -1,12 +1,23 @@
 import {DataIoCharacteristic} from "./DataIoCharacteristic";
 import {Configuration} from "./Configuration";
 import {computeAuthenticator, deriveSharedSecret, generateKeyPair, random} from "./Crypto";
-import {NUKI_NONCEBYTES, PAIRING_GDIO_CHARACTERISTIC_UUID} from "./Protocol";
+import {
+    NUKI_NONCEBYTES,
+    NUKI_STATE_PAIRING_MODE,
+    NUKI_STATE_UNINITIALIZED,
+    PAIRING_GDIO_CHARACTERISTIC_UUID
+} from "./Protocol";
 import {decodeCommand, encodeCommand} from "./command/Codec";
 import {Command} from "./command/Command";
 import {ErrorCommand} from "./command/ErrorCommand";
 import {DecodingError} from "./command/DecodingError";
-import {CMD_PUBLIC_KEY, ERROR_UNKNOWN, P_ERROR_BAD_AUTHENTICATOR, STATUS_COMPLETE} from "./command/Constants";
+import {
+    CMD_PUBLIC_KEY,
+    ERROR_UNKNOWN,
+    P_ERROR_BAD_AUTHENTICATOR,
+    P_ERROR_NOT_PAIRING,
+    STATUS_COMPLETE
+} from "./command/Constants";
 import {RequestDataCommand} from "./command/RequestDataCommand";
 import {StatusCommand} from "./command/StatusCommand";
 import {AuthorizationIdConfirmationCommand} from "./command/AuthorizationIdConfirmationCommand";
@@ -68,7 +79,7 @@ export class PairingCharacteristic extends DataIoCharacteristic {
             const command = decodeCommand(data);
             console.log("received " + command.toString());
             const response = await this.handleCommand(command);
-            console.log("sending " + command.toString());
+            console.log("sending " + response.toString());
             if (response instanceof ErrorCommand) {
                 this.state = {
                     key: "Initial"
@@ -92,6 +103,9 @@ export class PairingCharacteristic extends DataIoCharacteristic {
     }
 
     private async handleCommand(command: Command): Promise<Command> {
+        if (this.config.getNukiState() !== NUKI_STATE_UNINITIALIZED && this.config.getNukiState() !== NUKI_STATE_PAIRING_MODE) {
+            return new ErrorCommand(P_ERROR_NOT_PAIRING, command.id, "not in pairing mode");
+        }
         if (command instanceof RequestDataCommand) {
             if (this.state.key !== "Initial") {
                 return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
