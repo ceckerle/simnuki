@@ -27,4 +27,11 @@ export class KeypadCodeCountCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "KeypadCodeCountCommand {";
+        str += "\n  count: " + "0x" + this.count.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

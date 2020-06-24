@@ -27,4 +27,11 @@ export class MostRecentCommandCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "MostRecentCommandCommand {";
+        str += "\n  commandId: " + "0x" + this.commandId.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

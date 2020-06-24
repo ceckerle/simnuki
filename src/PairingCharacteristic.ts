@@ -66,7 +66,9 @@ export class PairingCharacteristic extends DataIoCharacteristic {
     async handleRequest(data: Buffer): Promise<Buffer> {
         try {
             const command = decodeCommand(data);
+            console.log("received " + command.toString());
             const response = await this.handleCommand(command);
+            console.log("sending " + command.toString());
             if (response instanceof ErrorCommand) {
                 this.state = {
                     key: "Initial"
@@ -96,7 +98,7 @@ export class PairingCharacteristic extends DataIoCharacteristic {
             }
             switch (command.commandId) {
                 case CMD_PUBLIC_KEY:
-                    console.log("Pairing: 1 sending server public key " + this.serverPublicKey.toString("hex"));
+                    console.log("Pairing: 1 sending server public key");
                     this.state = {
                         key: "PublicKeySent"
                     }
@@ -108,7 +110,7 @@ export class PairingCharacteristic extends DataIoCharacteristic {
             if (this.state.key !== "PublicKeySent") {
                 return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
             }
-            console.log("Pairing: 2 received client public key " + command.publicKey.toString("hex"));
+            console.log("Pairing: 2 received client public key");
             const sharedSecret = deriveSharedSecret(this.serverPrivateKey, command.publicKey);
             console.log("Pairing: 2 derived shared secret " + sharedSecret.toString("hex"));
             const challenge = random(NUKI_NONCEBYTES);
@@ -118,13 +120,13 @@ export class PairingCharacteristic extends DataIoCharacteristic {
                 sharedSecret,
                 challenge: challenge
             };
-            console.log("Pairing: 2 sending challenge " + challenge.toString("hex"));
+            console.log("Pairing: 2 sending challenge");
             return new ChallengeCommand(challenge);
         } else if (command instanceof AuthorizationAuthenticatorCommand) {
             if (this.state.key !== "ChallengeSent") {
                 return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
             }
-            console.log("Pairing: 3 received authenticator " + command.authenticator.toString("hex"));
+            console.log("Pairing: 3 received authenticator");
             const cr = computeAuthenticator(this.state.sharedSecret, this.state.clientPublicKey, this.serverPublicKey, this.state.challenge);
             if (Buffer.compare(command.authenticator, cr) !== 0) {
                 console.log("Pairing: 3 authenticator is NOT valid, aborting");
@@ -136,18 +138,14 @@ export class PairingCharacteristic extends DataIoCharacteristic {
                 key: "Challenge2Sent",
                 challenge: challenge
             }
-            console.log("Pairing: 3 authenticator is valid, sending challenge " + challenge.toString("hex"));
+            console.log("Pairing: 3 authenticator is valid, sending challenge");
             return new ChallengeCommand(challenge);
         } else if (command instanceof AuthorizationDataCommand) {
             if (this.state.key !== "Challenge2Sent") {
                 return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
             }
 
-            console.log(`Pairing: 4 received authentication data ${command.authenticator.toString("hex")}
-\tApp Id: ${command.appId.toString(16).padStart(8, "0")}
-\tApp Type: ${command.appType.toString(16).padStart(2, "0")}
-\tName: ${command.name}
-\tNonce ABF: ${command.nonce.toString("hex")}`);
+            console.log("Pairing: 4 received authentication data");
 
             const cr = computeAuthenticator(this.state.sharedSecret, command.getAuthenticatedData(), this.state.challenge);
             if (Buffer.compare(command.authenticator, cr) !== 0) {
@@ -183,15 +181,13 @@ export class PairingCharacteristic extends DataIoCharacteristic {
                 challenge: response.nonce
             }
 
-            console.log(`Pairing: 4 sending authorization id ${authorizationId}
-\tUUID: ${response.uuid.toString("hex")}
-\tChallenge: ${response.nonce.toString("hex")}`);
+            console.log("Pairing: 4 sending authorization id");
             return response;
         } else if (command instanceof AuthorizationIdConfirmationCommand) {
             if (this.state.key !== "AuthorizationIdSent") {
                 return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
             }
-            console.log(`Pairing: 5 received authorization id confirmation ${command.authorizationId} ${command.authenticator.toString("hex")}`);
+            console.log("Pairing: 5 received authorization id confirmation");
 
             const cr = computeAuthenticator(this.state.sharedSecret, command.getAuthenticatedData(), this.state.challenge);
             if (Buffer.compare(command.authenticator, cr) !== 0) {

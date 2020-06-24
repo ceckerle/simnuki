@@ -162,4 +162,33 @@ export class ConfigCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "ConfigCommand {";
+        str += "\n  nukiId: " + "0x" + this.nukiId.toString(16).padStart(8, "0");
+        str += "\n  name: " + this.name;
+        str += "\n  latitude: " + this.latitude;
+        str += "\n  longitude: " + this.longitude;
+        str += "\n  autoUnlatch: " + "0x" + this.autoUnlatch.toString(16).padStart(2, "0");
+        str += "\n  pairingEnabled: " + "0x" + this.pairingEnabled.toString(16).padStart(2, "0");
+        str += "\n  buttonEnabled: " + "0x" + this.buttonEnabled.toString(16).padStart(2, "0");
+        str += "\n  ledEnabled: " + "0x" + this.ledEnabled.toString(16).padStart(2, "0");
+        str += "\n  ledBrightness: " + "0x" + this.ledBrightness.toString(16).padStart(2, "0");
+        str += "\n  currentTime: " + this.currentTime.toISOString();
+        str += "\n  timezoneOffset: " + "0x" + this.timezoneOffset.toString(16).padStart(4, "0");
+        str += "\n  dstMode: " + "0x" + this.dstMode.toString(16).padStart(2, "0");
+        str += "\n  hasFob: " + "0x" + this.hasFob.toString(16).padStart(2, "0");
+        str += "\n  fobAction1: " + "0x" + this.fobAction1.toString(16).padStart(2, "0");
+        str += "\n  fobAction2: " + "0x" + this.fobAction2.toString(16).padStart(2, "0");
+        str += "\n  fobAction3: " + "0x" + this.fobAction3.toString(16).padStart(2, "0");
+        str += "\n  singleLock: " + "0x" + this.singleLock.toString(16).padStart(2, "0");
+        str += "\n  advertisingMode: " + "0x" + this.advertisingMode.toString(16).padStart(2, "0");
+        str += "\n  hasKeypad: " + "0x" + this.hasKeypad.toString(16).padStart(2, "0");
+        str += "\n  firmwareVersion: " + "0x" + this.firmwareVersion.toString(16).padStart(6, "0");
+        str += "\n  hardwareRevision: " + "0x" + this.hardwareRevision.toString(16).padStart(4, "0");
+        str += "\n  homekitStatus: " + "0x" + this.homekitStatus.toString(16).padStart(2, "0");
+        str += "\n  timezoneId: " + "0x" + this.timezoneId.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

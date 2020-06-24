@@ -34,4 +34,12 @@ export class FirmwareStatusCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "FirmwareStatusCommand {";
+        str += "\n  version: " + "0x" + this.version.toString(16).padStart(6, "0");
+        str += "\n  data: " + "0x" + this.data.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

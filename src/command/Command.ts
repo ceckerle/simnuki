@@ -6,4 +6,6 @@ export abstract class Command {
 
     abstract encode(): Buffer;
 
+    abstract toString(): string;
+
 }

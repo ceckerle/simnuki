@@ -63,4 +63,17 @@ export class UpdateTimeControlEntryCommand extends CommandNeedsSecurityPin {
         return buffer;
     }
     
+    toString(): string {
+        let str = "UpdateTimeControlEntryCommand {";
+        str += "\n  entryId: " + "0x" + this.entryId.toString(16).padStart(2, "0");
+        str += "\n  enabled: " + "0x" + this.enabled.toString(16).padStart(2, "0");
+        str += "\n  weekdays: " + "0x" + this.weekdays.toString(16).padStart(2, "0");
+        str += "\n  time: " + "0x" + this.time.toString(16).padStart(4, "0");
+        str += "\n  lockAction: " + "0x" + this.lockAction.toString(16).padStart(2, "0");
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n  securityPin: " + "0x" + this.securityPin.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

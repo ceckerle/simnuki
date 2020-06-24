@@ -106,4 +106,24 @@ export class AuthorizationEntryCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "AuthorizationEntryCommand {";
+        str += "\n  authorizationId: " + "0x" + this.authorizationId.toString(16).padStart(8, "0");
+        str += "\n  idType: " + "0x" + this.idType.toString(16).padStart(2, "0");
+        str += "\n  name: " + this.name;
+        str += "\n  enabled: " + "0x" + this.enabled.toString(16).padStart(2, "0");
+        str += "\n  remoteAllowed: " + "0x" + this.remoteAllowed.toString(16).padStart(2, "0");
+        str += "\n  dateCreated: " + this.dateCreated.toISOString();
+        str += "\n  dateLastActive: " + this.dateLastActive.toISOString();
+        str += "\n  lockCount: " + "0x" + this.lockCount.toString(16).padStart(4, "0");
+        str += "\n  timeLimited: " + "0x" + this.timeLimited.toString(16).padStart(2, "0");
+        str += "\n  allowedFromDate: " + this.allowedFromDate.toISOString();
+        str += "\n  allowedUntilDate: " + this.allowedUntilDate.toISOString();
+        str += "\n  allowedWeekdays: " + "0x" + this.allowedWeekdays.toString(16).padStart(2, "0");
+        str += "\n  allowedFromTime: " + "0x" + this.allowedFromTime.toString(16).padStart(4, "0");
+        str += "\n  allowedToTime: " + "0x" + this.allowedToTime.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

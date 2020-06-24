@@ -34,4 +34,12 @@ export class KeypadCodeIdCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "KeypadCodeIdCommand {";
+        str += "\n  codeId: " + "0x" + this.codeId.toString(16).padStart(4, "0");
+        str += "\n  dateCreated: " + this.dateCreated.toISOString();
+        str += "\n}";
+        return str;
+    }
+    
 }

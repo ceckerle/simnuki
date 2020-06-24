@@ -37,4 +37,12 @@ export class AuthorizationIdConfirmationCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "AuthorizationIdConfirmationCommand {";
+        str += "\n  authenticator: " + "0x" + this.authenticator.toString("hex");
+        str += "\n  authorizationId: " + "0x" + this.authorizationId.toString(16).padStart(8, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

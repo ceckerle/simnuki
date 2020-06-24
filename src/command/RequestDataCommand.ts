@@ -33,4 +33,12 @@ export class RequestDataCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "RequestDataCommand {";
+        str += "\n  commandId: " + "0x" + this.commandId.toString(16).padStart(4, "0");
+        str += "\n  additionalData: " + "0x" + this.additionalData.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

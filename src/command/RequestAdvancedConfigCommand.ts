@@ -27,4 +27,11 @@ export class RequestAdvancedConfigCommand extends CommandNeedsChallenge {
         return buffer;
     }
     
+    toString(): string {
+        let str = "RequestAdvancedConfigCommand {";
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

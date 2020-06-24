@@ -27,4 +27,11 @@ export class RequestConfigCommand extends CommandNeedsChallenge {
         return buffer;
     }
     
+    toString(): string {
+        let str = "RequestConfigCommand {";
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

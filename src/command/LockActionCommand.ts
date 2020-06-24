@@ -56,4 +56,15 @@ export class LockActionCommand extends CommandNeedsChallenge {
         return buffer;
     }
     
+    toString(): string {
+        let str = "LockActionCommand {";
+        str += "\n  lockAction: " + "0x" + this.lockAction.toString(16).padStart(2, "0");
+        str += "\n  appId: " + "0x" + this.appId.toString(16).padStart(8, "0");
+        str += "\n  flags: " + "0x" + this.flags.toString(16).padStart(2, "0");
+        str += "\n  nameSuffix: " + this.nameSuffix;
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

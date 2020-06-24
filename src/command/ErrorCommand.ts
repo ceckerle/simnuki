@@ -35,4 +35,12 @@ export class ErrorCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "ErrorCommand {";
+        str += "\n  errorCode: " + "0x" + this.errorCode.toString(16).padStart(2, "0");
+        str += "\n  commandId: " + "0x" + this.commandId.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

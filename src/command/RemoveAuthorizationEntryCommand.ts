@@ -39,4 +39,13 @@ export class RemoveAuthorizationEntryCommand extends CommandNeedsSecurityPin {
         return buffer;
     }
     
+    toString(): string {
+        let str = "RemoveAuthorizationEntryCommand {";
+        str += "\n  authorizationId: " + "0x" + this.authorizationId.toString(16).padStart(8, "0");
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n  securityPin: " + "0x" + this.securityPin.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

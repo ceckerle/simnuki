@@ -81,4 +81,20 @@ export class BatteryReportCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "BatteryReportCommand {";
+        str += "\n  batteryDrain: " + "0x" + this.batteryDrain.toString(16).padStart(4, "0");
+        str += "\n  batteryVoltage: " + "0x" + this.batteryVoltage.toString(16).padStart(4, "0");
+        str += "\n  criticalBatteryState: " + "0x" + this.criticalBatteryState.toString(16).padStart(2, "0");
+        str += "\n  locakAction: " + "0x" + this.locakAction.toString(16).padStart(2, "0");
+        str += "\n  startVoltage: " + "0x" + this.startVoltage.toString(16).padStart(4, "0");
+        str += "\n  lowestVoltage: " + "0x" + this.lowestVoltage.toString(16).padStart(4, "0");
+        str += "\n  lockDistance: " + "0x" + this.lockDistance.toString(16).padStart(4, "0");
+        str += "\n  startTemperature: " + "0x" + this.startTemperature.toString(16).padStart(2, "0");
+        str += "\n  maxTurnCurrent: " + "0x" + this.maxTurnCurrent.toString(16).padStart(4, "0");
+        str += "\n  batteryResistance: " + "0x" + this.batteryResistance.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

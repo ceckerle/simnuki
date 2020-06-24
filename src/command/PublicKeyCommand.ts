@@ -27,4 +27,11 @@ export class PublicKeyCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "PublicKeyCommand {";
+        str += "\n  publicKey: " + "0x" + this.publicKey.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

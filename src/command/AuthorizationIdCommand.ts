@@ -49,4 +49,14 @@ export class AuthorizationIdCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "AuthorizationIdCommand {";
+        str += "\n  authenticator: " + "0x" + this.authenticator.toString("hex");
+        str += "\n  authorizationId: " + "0x" + this.authorizationId.toString(16).padStart(8, "0");
+        str += "\n  uuid: " + "0x" + this.uuid.toString("hex");
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

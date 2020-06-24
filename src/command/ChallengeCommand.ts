@@ -27,4 +27,11 @@ export class ChallengeCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "ChallengeCommand {";
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

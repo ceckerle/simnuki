@@ -132,4 +132,28 @@ export class SetConfigCommand extends CommandNeedsSecurityPin {
         return buffer;
     }
     
+    toString(): string {
+        let str = "SetConfigCommand {";
+        str += "\n  name: " + this.name;
+        str += "\n  latitude: " + this.latitude;
+        str += "\n  longitude: " + this.longitude;
+        str += "\n  autoUnlatch: " + "0x" + this.autoUnlatch.toString(16).padStart(2, "0");
+        str += "\n  pairingEnabled: " + "0x" + this.pairingEnabled.toString(16).padStart(2, "0");
+        str += "\n  buttonEnabled: " + "0x" + this.buttonEnabled.toString(16).padStart(2, "0");
+        str += "\n  ledEnabled: " + "0x" + this.ledEnabled.toString(16).padStart(2, "0");
+        str += "\n  ledBrightness: " + "0x" + this.ledBrightness.toString(16).padStart(2, "0");
+        str += "\n  timezoneOffset: " + "0x" + this.timezoneOffset.toString(16).padStart(4, "0");
+        str += "\n  dstMode: " + "0x" + this.dstMode.toString(16).padStart(2, "0");
+        str += "\n  fobAction1: " + "0x" + this.fobAction1.toString(16).padStart(2, "0");
+        str += "\n  fobAction2: " + "0x" + this.fobAction2.toString(16).padStart(2, "0");
+        str += "\n  fobAction3: " + "0x" + this.fobAction3.toString(16).padStart(2, "0");
+        str += "\n  singleLock: " + "0x" + this.singleLock.toString(16).padStart(2, "0");
+        str += "\n  advertisingMode: " + "0x" + this.advertisingMode.toString(16).padStart(2, "0");
+        str += "\n  timezoneId: " + "0x" + this.timezoneId.toString(16).padStart(4, "0");
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n  securityPin: " + "0x" + this.securityPin.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

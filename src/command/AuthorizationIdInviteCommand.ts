@@ -34,4 +34,12 @@ export class AuthorizationIdInviteCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "AuthorizationIdInviteCommand {";
+        str += "\n  authorizationId: " + "0x" + this.authorizationId.toString(16).padStart(8, "0");
+        str += "\n  dateCreated: " + this.dateCreated.toISOString();
+        str += "\n}";
+        return str;
+    }
+    
 }

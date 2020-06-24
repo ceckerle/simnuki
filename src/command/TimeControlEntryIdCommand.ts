@@ -27,4 +27,11 @@ export class TimeControlEntryIdCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "TimeControlEntryIdCommand {";
+        str += "\n  entryId: " + "0x" + this.entryId.toString(16).padStart(2, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

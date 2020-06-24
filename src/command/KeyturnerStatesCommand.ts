@@ -94,4 +94,22 @@ export class KeyturnerStatesCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "KeyturnerStatesCommand {";
+        str += "\n  nukState: " + "0x" + this.nukState.toString(16).padStart(2, "0");
+        str += "\n  lockState: " + "0x" + this.lockState.toString(16).padStart(2, "0");
+        str += "\n  trigger: " + "0x" + this.trigger.toString(16).padStart(2, "0");
+        str += "\n  currentTime: " + this.currentTime.toISOString();
+        str += "\n  timezoneOffset: " + "0x" + this.timezoneOffset.toString(16).padStart(4, "0");
+        str += "\n  criticalBatteryState: " + "0x" + this.criticalBatteryState.toString(16).padStart(2, "0");
+        str += "\n  configUpdateCount: " + "0x" + this.configUpdateCount.toString(16).padStart(2, "0");
+        str += "\n  lockngoTimer: " + "0x" + this.lockngoTimer.toString(16).padStart(2, "0");
+        str += "\n  lastLockAction: " + "0x" + this.lastLockAction.toString(16).padStart(2, "0");
+        str += "\n  lastLockActionTrigger: " + "0x" + this.lastLockActionTrigger.toString(16).padStart(2, "0");
+        str += "\n  lastLockActionCompletionState: " + "0x" + this.lastLockActionCompletionState.toString(16).padStart(2, "0");
+        str += "\n  doorSensorState: " + "0x" + this.doorSensorState.toString(16).padStart(2, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

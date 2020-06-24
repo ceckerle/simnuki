@@ -27,4 +27,11 @@ export class AuthorizationAuthenticatorCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "AuthorizationAuthenticatorCommand {";
+        str += "\n  authenticator: " + "0x" + this.authenticator.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

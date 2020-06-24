@@ -27,4 +27,11 @@ export class StatusCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "StatusCommand {";
+        str += "\n  status: " + "0x" + this.status.toString(16).padStart(2, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

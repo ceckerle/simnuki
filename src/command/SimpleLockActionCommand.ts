@@ -33,4 +33,12 @@ export class SimpleLockActionCommand extends CommandNeedsChallenge {
         return buffer;
     }
     
+    toString(): string {
+        let str = "SimpleLockActionCommand {";
+        str += "\n  lockAction: " + "0x" + this.lockAction.toString(16).padStart(2, "0");
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

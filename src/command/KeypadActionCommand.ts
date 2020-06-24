@@ -45,4 +45,14 @@ export class KeypadActionCommand extends CommandNeedsChallenge {
         return buffer;
     }
     
+    toString(): string {
+        let str = "KeypadActionCommand {";
+        str += "\n  source: " + "0x" + this.source.toString(16).padStart(2, "0");
+        str += "\n  code: " + "0x" + this.code.toString(16).padStart(8, "0");
+        str += "\n  action: " + "0x" + this.action.toString(16).padStart(2, "0");
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

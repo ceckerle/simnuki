@@ -117,11 +117,11 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
             sharedSecret
         }
 
-        // console.log("decrypted " + decryptedMessge.toString("hex"));
-
         try {
             const command = decodeCommand(decryptedCommand.slice(4), true);
+            console.log("received " + command.toString());
             const response = await this.handleCommand(command, encryptionContext);
+            console.log("sending " + response.toString());
             if (response instanceof ErrorCommand) {
                 this.state = {
                     key: "Initial"
@@ -167,7 +167,6 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
         if (command instanceof RequestDataCommand) {
             switch (command.commandId) {
                 case CMD_CHALLENGE:
-                    console.log("CL requests challenge");
                     const challenge = new ChallengeCommand(random(NUKI_NONCEBYTES));
                     this.state = {
                         key: "ChallengeSent",
@@ -175,16 +174,13 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                     }
                     return challenge;
                 case CMD_KEYTURNER_STATES:
-                    console.log("CL requests keyturner states");
                     return this.buildStateCommand();
                 case CMD_FIRMWARE_STATUS:
-                    console.log("CL requests firmware status");
                     return new FirmwareStatusCommand(FIRMWARE_VERSION);
                 default:
                     return new ErrorCommand(ERROR_UNKNOWN, command.id, `bad request data ${command.commandId}`);
             }
         } else if (command instanceof RequestConfigCommand) {
-            console.log("CL sent CMD_REQUEST_CONFIG");
             const now = new Date();
             return new ConfigCommand(
                 parseInt(this.config.getNukiIdStr(), 16),
@@ -212,7 +208,6 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 this.config.get("timezoneId") | 0
             );
         } else if (command instanceof SetConfigCommand) {
-            console.log("CL sent CMD_SET_CONFIG");
             this.config.setName(command.name);
             this.config.set("latitude", command.latitude);
             this.config.set("longitude", command.longitude);
@@ -236,33 +231,22 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
             await this.config.save();
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof VerifySecurityPinCommand) {
-            console.log("CL sent CMD_VERIFY_PIN");
+            // pin already verified
 
-            // TODO: why? this.config.setNukiState(NUKI_STATE_DOOR_MODE);
-
-            console.log("PIN verified ok");
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof RequestAdvancedConfigCommand) {
-            console.log("CL sent CMD_REQUEST_ADVANCED_CONFIG");
-
             // TODO: implement
 
             return new AdvancedConfigCommand();
         } else if (command instanceof SetAdvancedConfigCommand) {
-            console.log("CL sent CMD_SET_ADVANCED_CONFIG");
-
             // TODO: implement
 
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof UpdateTimeCommand) {
-            console.log("CL sent CMD_UPDATE_TIME");
-
             // ignore
 
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof LockActionCommand) {
-            console.log("CL sent CMD_LOCK_ACTION");
-
             const lockAction = command.lockAction;
             let action = lockAction;
             const currentLockState = this.config.getLockState();
@@ -345,8 +329,6 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof RequestCalibrationCommand) {
-            console.log("CL sent CMD_REQUEST_CALIBRATION");
-
             await this.sendCommand(new StatusCommand(STATUS_ACCEPTED), encryptionContext);
             await this.sleep(2);
             // TODO: calibration status updates
@@ -355,16 +337,12 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof SetSecurityPinCommand) {
-            console.log("CL sent CMD_SET_PIN");
-
-            console.log("set new Pin: ", command.pin);
+            console.log("Set new PIN: ", command.pin);
             this.config.setAdminPin(command.pin);
             await this.config.save();
 
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof RemoveAuthorizationEntryCommand) {
-            console.log("CL sent CMD_REMOVE_AUTHORIZATION_ENTRY");
-
             this.config.removeUser(command.authorizationId);
             await this.config.save();
 
@@ -392,6 +370,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
     }
 
     private async sendCommand(command: Command, encryptionContext: EncryptionContext): Promise<void> {
+        console.log("sending " + command.toString());
         await this.sendIndication(this.encryptCommand(command, encryptionContext.authorizationId, encryptionContext.nonce, encryptionContext.sharedSecret));
     }
 
@@ -402,8 +381,6 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
         cmdBuffer.writeUInt16LE(command.id, 0);
         const responseData = Buffer.concat([authIdBuffer, cmdBuffer, command.encode(), Buffer.alloc(2)]);
         setCrc(responseData);
-
-        // console.log("will encrypt", responseData.toString("hex"), responseData.length);
 
         const pDataEncrypted = encrypt(responseData, nonce, sharedSecret);
 

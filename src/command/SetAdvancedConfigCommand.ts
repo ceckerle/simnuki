@@ -147,4 +147,31 @@ export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
         return buffer;
     }
     
+    toString(): string {
+        let str = "SetAdvancedConfigCommand {";
+        str += "\n  unlockedPositionOffsetDegrees: " + "0x" + this.unlockedPositionOffsetDegrees.toString(16).padStart(4, "0");
+        str += "\n  lockedPositionOffsetDegrees: " + "0x" + this.lockedPositionOffsetDegrees.toString(16).padStart(4, "0");
+        str += "\n  singleLockedPositionOffsetDegrees: " + "0x" + this.singleLockedPositionOffsetDegrees.toString(16).padStart(4, "0");
+        str += "\n  unlockedToLockedTransitionOffsetDegrees: " + "0x" + this.unlockedToLockedTransitionOffsetDegrees.toString(16).padStart(4, "0");
+        str += "\n  lockngoTimeout: " + "0x" + this.lockngoTimeout.toString(16).padStart(2, "0");
+        str += "\n  singleButtonPressAction: " + "0x" + this.singleButtonPressAction.toString(16).padStart(2, "0");
+        str += "\n  doubleButtonPressAction: " + "0x" + this.doubleButtonPressAction.toString(16).padStart(2, "0");
+        str += "\n  detachedCylinder: " + "0x" + this.detachedCylinder.toString(16).padStart(2, "0");
+        str += "\n  batteryType: " + "0x" + this.batteryType.toString(16).padStart(2, "0");
+        str += "\n  automaticBatteryTypeDetection: " + "0x" + this.automaticBatteryTypeDetection.toString(16).padStart(2, "0");
+        str += "\n  unlatchDuration: " + "0x" + this.unlatchDuration.toString(16).padStart(2, "0");
+        str += "\n  autoLockTimeout: " + "0x" + this.autoLockTimeout.toString(16).padStart(4, "0");
+        str += "\n  autoUnlockDisabled: " + "0x" + this.autoUnlockDisabled.toString(16).padStart(2, "0");
+        str += "\n  nightmodeEnabled: " + "0x" + this.nightmodeEnabled.toString(16).padStart(2, "0");
+        str += "\n  nightmodeStartTime: " + "0x" + this.nightmodeStartTime.toString(16).padStart(4, "0");
+        str += "\n  nightmodeEndTime: " + "0x" + this.nightmodeEndTime.toString(16).padStart(4, "0");
+        str += "\n  nightmodeAutoLockEnabled: " + "0x" + this.nightmodeAutoLockEnabled.toString(16).padStart(2, "0");
+        str += "\n  nightmodeAutoUnlockDisabled: " + "0x" + this.nightmodeAutoUnlockDisabled.toString(16).padStart(2, "0");
+        str += "\n  nightmodeImmediateLockOnStart: " + "0x" + this.nightmodeImmediateLockOnStart.toString(16).padStart(2, "0");
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n  securityPin: " + "0x" + this.securityPin.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

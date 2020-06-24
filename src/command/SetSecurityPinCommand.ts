@@ -39,4 +39,13 @@ export class SetSecurityPinCommand extends CommandNeedsSecurityPin {
         return buffer;
     }
     
+    toString(): string {
+        let str = "SetSecurityPinCommand {";
+        str += "\n  pin: " + "0x" + this.pin.toString(16).padStart(4, "0");
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n  securityPin: " + "0x" + this.securityPin.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

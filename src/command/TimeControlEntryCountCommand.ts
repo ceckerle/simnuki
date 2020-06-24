@@ -27,4 +27,11 @@ export class TimeControlEntryCountCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "TimeControlEntryCountCommand {";
+        str += "\n  count: " + "0x" + this.count.toString(16).padStart(2, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

@@ -56,4 +56,15 @@ export class AuthorizationDataCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "AuthorizationDataCommand {";
+        str += "\n  authenticator: " + "0x" + this.authenticator.toString("hex");
+        str += "\n  appType: " + "0x" + this.appType.toString(16).padStart(2, "0");
+        str += "\n  appId: " + "0x" + this.appId.toString(16).padStart(8, "0");
+        str += "\n  name: " + this.name;
+        str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }

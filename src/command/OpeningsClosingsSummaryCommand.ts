@@ -45,4 +45,14 @@ export class OpeningsClosingsSummaryCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "OpeningsClosingsSummaryCommand {";
+        str += "\n  openingsTotal: " + "0x" + this.openingsTotal.toString(16).padStart(4, "0");
+        str += "\n  closingsTotal: " + "0x" + this.closingsTotal.toString(16).padStart(4, "0");
+        str += "\n  openingsSinceBoot: " + "0x" + this.openingsSinceBoot.toString(16).padStart(4, "0");
+        str += "\n  closingsSinceBoot: " + "0x" + this.closingsSinceBoot.toString(16).padStart(4, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

@@ -429,9 +429,17 @@ ${props.map((p, i) =>
         const buffer = Buffer.alloc(${totalBytes});
         ${props.length > 1 ? "let" : "const"} ofs = 0;
 ${props.map((p, i) =>
-            `        ${p.enc};` + (i < props.length - 1 ? `
+`        ${p.enc};` + (i < props.length - 1 ? `
         ofs += ${p.bytes};` : "")).join("\n")}
         return buffer;
+    }
+    
+    toString(): string {
+        let str = "${name} {";
+${props.map((p) => 
+`        str += "\\n  ${p.name}: " + ${p.str};`).join("\n")}
+        str += "\\n}";
+        return str;
     }
     
 }
@@ -475,11 +483,11 @@ import {${constClassPairs.map((p) => p[0]).join(", ")}, ERROR_BAD_LENGTH, ERROR_
 ${constClassPairs.map((p) => `import {${p[1]}} from "./${p[1]}"`).join("\n")}
 
 
-export function decodeCommand(buffer: Buffer): Command {
+export function decodeCommand(buffer: Buffer, skipCrc = false): Command {
     if (buffer.length < 4) {
         throw new DecodingError(ERROR_BAD_LENGTH);
     }
-    if (!checkCrc(buffer)) {
+    if (!skipCrc && !checkCrc(buffer)) {
         throw new DecodingError(ERROR_BAD_CRC);
     }
     const id = buffer.readUInt16LE(0);
@@ -533,12 +541,14 @@ function getPropInfo(prop: string[]) {
     let init: string;
     let dec: string;
     let enc: string;
+    let str = `this.${name}`;
     switch (t) {
         case "B":
             type = "Buffer";
             init = `Buffer.alloc(${bytes})`;
             dec = `buffer.slice(ofs, ofs + ${bytes})`;
             enc = `this.${name}.copy(buffer, ofs)`;
+            str = `"0x" + this.${name}.toString("hex")`
             break;
         case "s":
             type = "string";
@@ -565,6 +575,7 @@ function getPropInfo(prop: string[]) {
                 default:
                     throw new Error("Unsupported bytes for type int " + bytes);
             }
+            str = `"0x" + this.${name}.toString(16).padStart(${bytes * 2}, "0")`;
             break;
         case "f":
             type = "number";
@@ -581,9 +592,10 @@ function getPropInfo(prop: string[]) {
         case "D":
             bytes = 7;
             type = "Date";
-            init = "new Date()"
-            dec = `readDateTime(buffer, ofs)`
-            enc = `writeDateTime(buffer, this.${name}, ofs)`
+            init = "new Date()";
+            dec = `readDateTime(buffer, ofs)`;
+            enc = `writeDateTime(buffer, this.${name}, ofs)`;
+            str = `this.${name}.toISOString()`;
             break;
         default:
             throw new Error("Unsupported type " + prop[1]);
@@ -595,7 +607,8 @@ function getPropInfo(prop: string[]) {
         bytes,
         init,
         dec,
-        enc
+        enc,
+        str
     }
 }
 

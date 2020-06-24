@@ -45,4 +45,14 @@ export class LogEntryCountCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "LogEntryCountCommand {";
+        str += "\n  loggingEnabled: " + "0x" + this.loggingEnabled.toString(16).padStart(2, "0");
+        str += "\n  count: " + "0x" + this.count.toString(16).padStart(4, "0");
+        str += "\n  doorSensorEnabled: " + "0x" + this.doorSensorEnabled.toString(16).padStart(2, "0");
+        str += "\n  doorSensorLoggingEnabled: " + "0x" + this.doorSensorLoggingEnabled.toString(16).padStart(2, "0");
+        str += "\n}";
+        return str;
+    }
+    
 }

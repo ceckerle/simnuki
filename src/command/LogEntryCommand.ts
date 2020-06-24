@@ -58,4 +58,16 @@ export class LogEntryCommand extends Command {
         return buffer;
     }
     
+    toString(): string {
+        let str = "LogEntryCommand {";
+        str += "\n  index: " + "0x" + this.index.toString(16).padStart(8, "0");
+        str += "\n  timestamp: " + this.timestamp.toISOString();
+        str += "\n  authorizationId: " + "0x" + this.authorizationId.toString(16).padStart(8, "0");
+        str += "\n  name: " + this.name;
+        str += "\n  type: " + "0x" + this.type.toString(16).padStart(2, "0");
+        str += "\n  data: " + "0x" + this.data.toString("hex");
+        str += "\n}";
+        return str;
+    }
+    
 }
