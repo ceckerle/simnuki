@@ -1,7 +1,7 @@
 import * as bleno from "@abandonware/bleno";
 import {KeyturnerUserSpecificCharacteristic} from "./KeyturnerUserSpecificCharacteristic";
 import {KeyturnerGeneralCharacteristic} from "./KeyturnerGeneralCharacteristic";
-import {KEYTURNER_SERVICE_UUID} from "./Protocol";
+import {KEYTURNER_SERVICE_UUID, KEYTURNER_THRID_CHARACTERISTIC_UUID} from "./Protocol";
 import {Configuration} from "./Configuration";
 
 export class KeyturnerService extends bleno.PrimaryService {
@@ -11,7 +11,11 @@ export class KeyturnerService extends bleno.PrimaryService {
             uuid: KEYTURNER_SERVICE_UUID,
             characteristics: [
                 new KeyturnerGeneralCharacteristic(),
-                new KeyturnerUserSpecificCharacteristic(config)
+                new KeyturnerUserSpecificCharacteristic(config),
+                new bleno.Characteristic({
+                    uuid: KEYTURNER_THRID_CHARACTERISTIC_UUID,
+                    properties: ["write"]
+                })
             ]
         });
     }

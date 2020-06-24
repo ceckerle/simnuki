@@ -14,7 +14,7 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
     constructor(uuid: string) {
         super({
             uuid,
-            properties: ['write', 'indicate'],
+            properties: ['read', 'write', 'indicate'],
             descriptors: [
                 new bleno.Descriptor({
                     uuid: '2902',

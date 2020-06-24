@@ -5,6 +5,7 @@ import {KeyturnerService} from "./KeyturnerService";
 import {Advertiser} from "./Advertiser";
 import {Configuration} from "./Configuration";
 import {NUKI_STATE_DOOR_MODE, NUKI_STATE_PAIRING_MODE, NUKI_STATE_UNINITIALIZED} from "./Protocol";
+import {DeviceInformationService} from "./DeviceInformationService";
 
 const config = new Configuration();
 
@@ -19,6 +20,7 @@ bleno.on('accept', function (address) {
     const keyturnerInitializationService = new InitializationService();
     const keyturnerPairingService = new PairingService(config);
     const keyturnerService = new KeyturnerService(config);
+    const deviceInformationService = new DeviceInformationService(config);
     const nukiState = config.getNukiState();
     switch (nukiState) {
         case NUKI_STATE_UNINITIALIZED:
@@ -26,20 +28,24 @@ bleno.on('accept', function (address) {
             bleno.setServices([
                 keyturnerInitializationService,
                 keyturnerPairingService,
-                keyturnerService
+                keyturnerService,
+                deviceInformationService
             ]);
             break;
         case NUKI_STATE_PAIRING_MODE:
             console.log("Nuki state: pairing");
             bleno.setServices([
                 keyturnerPairingService,
-                keyturnerService
+                keyturnerService,
+                deviceInformationService
             ]);
             break;
         case NUKI_STATE_DOOR_MODE:
             console.log("Nuki state: door");
             bleno.setServices([
-                keyturnerService
+                deviceInformationService,
+                keyturnerService,
+                deviceInformationService
             ]);
             break;
         default:

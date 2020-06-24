@@ -2,10 +2,11 @@ import {DataIoCharacteristic} from "./DataIoCharacteristic";
 import {Configuration} from "./Configuration";
 import {decrypt, encrypt, random} from "./Crypto";
 import {
+    FIRMWARE_VERSION,
     FOB_ACTION_INTELLIGENT,
     FOB_ACTION_LOCK,
     FOB_ACTION_LOCKNGO, FOB_ACTION_NONE,
-    FOB_ACTION_UNLOCK,
+    FOB_ACTION_UNLOCK, HARDWARE_VERSION,
     KEYTURNER_USDIO_CHARACTERISTIC_UUID,
     LOCK_ACTION_FOB_ACTION_1,
     LOCK_ACTION_FOB_ACTION_2,
@@ -14,7 +15,7 @@ import {
     LOCK_ACTION_LOCKNGO, LOCK_ACTION_LOCKNGO_WITH_UNLATCH, LOCK_ACTION_UNLATCH,
     LOCK_ACTION_UNLOCK,
     LOCK_STATE_LOCKED, LOCK_STATE_LOCKING, LOCK_STATE_UNLATCHED, LOCK_STATE_UNLOCKED, LOCK_STATE_UNLOCKING,
-    NUKI_NONCEBYTES
+    NUKI_NONCEBYTES, NUKI_STATE_PAIRING_MODE, NUKI_STATE_UNINITIALIZED
 } from "./Protocol";
 import {decodeCommand} from "./command/Codec";
 import {
@@ -161,7 +162,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                     return this.buildStateCommand();
                 case CMD_FIRMWARE_STATUS:
                     console.log("CL requests firmware status");
-                    return new FirmwareStatusCommand(0x010203);
+                    return new FirmwareStatusCommand(FIRMWARE_VERSION);
                 default:
                     return new ErrorCommand(ERROR_UNKNOWN, command.id, `bad request data ${command.commandId}`);
             }
@@ -196,6 +197,13 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 this.config.get("fobAction1") || 1, // unlock
                 this.config.get("fobAction2") || 2, // lock
                 this.config.get("fobAction3"),
+                this.config.get("singleLock"),
+                this.config.get("advertisingMode"),
+                0,
+                FIRMWARE_VERSION,
+                HARDWARE_VERSION,
+                0,
+                this.config.get("timezoneId") | 0
             );
         } else if (command instanceof SetConfigCommand) {
             if (this.state.key !== "ChallengeSent") {
@@ -222,6 +230,14 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
             this.config.set("fobAction1", command.fobAction1);
             this.config.set("fobAction2", command.fobAction2);
             this.config.set("fobAction3", command.fobAction3);
+            this.config.set("singleLock", command.singleLock);
+            this.config.set("advertisingMode", command.advertisingMode);
+            this.config.set("timezoneId", command.timezoneId);
+
+            if (this.config.getNukiState() === NUKI_STATE_UNINITIALIZED) {
+                this.config.setNukiState(NUKI_STATE_PAIRING_MODE);
+            }
+
             await this.config.save();
             this.state = {
                 key: "Initial"
