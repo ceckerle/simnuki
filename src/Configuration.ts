@@ -77,7 +77,7 @@ export class Configuration {
     }
 
     public getUsers(): {[authorizationId: string]: User} {
-        return this.get("users");
+        return this.get("users") ?? {};
     }
 
     public getUsersArray(): User[] {
