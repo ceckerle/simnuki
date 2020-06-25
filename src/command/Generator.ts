@@ -69,7 +69,6 @@ authorizationId,u,4
 name,s,32
 enabled,u,1
 remoteAllowed,u,1
-lockCount,u,2
 timeLimited,u,1
 allowedFromDate,D
 allowedUntilDate,D
@@ -194,7 +193,7 @@ sortOrder,u,1
 totalCount,u,1
 nonce,B,32
 securityPin,u,2
-!LogEntry,4
+!LogEntry,32
 index,u,4
 timestamp,D
 authorizationId,u,4

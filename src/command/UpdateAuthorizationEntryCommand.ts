@@ -10,7 +10,6 @@ export class UpdateAuthorizationEntryCommand extends CommandNeedsSecurityPin {
     name: string;
     enabled: number;
     remoteAllowed: number;
-    lockCount: number;
     timeLimited: number;
     allowedFromDate: Date;
     allowedUntilDate: Date;
@@ -20,13 +19,12 @@ export class UpdateAuthorizationEntryCommand extends CommandNeedsSecurityPin {
     nonce: Buffer;
     securityPin: number;
 
-    constructor(authorizationId?: number, name?: string, enabled?: number, remoteAllowed?: number, lockCount?: number, timeLimited?: number, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number, nonce?: Buffer, securityPin?: number) {
+    constructor(authorizationId?: number, name?: string, enabled?: number, remoteAllowed?: number, timeLimited?: number, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number, nonce?: Buffer, securityPin?: number) {
         super();
         this.authorizationId = authorizationId ?? 0;
         this.name = name ?? "";
         this.enabled = enabled ?? 0;
         this.remoteAllowed = remoteAllowed ?? 0;
-        this.lockCount = lockCount ?? 0;
         this.timeLimited = timeLimited ?? 0;
         this.allowedFromDate = allowedFromDate ?? new Date();
         this.allowedUntilDate = allowedUntilDate ?? new Date();
@@ -38,7 +36,7 @@ export class UpdateAuthorizationEntryCommand extends CommandNeedsSecurityPin {
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== 94) {
+        if (buffer.length !== 92) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
@@ -50,8 +48,6 @@ export class UpdateAuthorizationEntryCommand extends CommandNeedsSecurityPin {
         ofs += 1;
         this.remoteAllowed = buffer.readUInt8(ofs);
         ofs += 1;
-        this.lockCount = buffer.readUInt16LE(ofs);
-        ofs += 2;
         this.timeLimited = buffer.readUInt8(ofs);
         ofs += 1;
         this.allowedFromDate = readDateTime(buffer, ofs);
@@ -70,7 +66,7 @@ export class UpdateAuthorizationEntryCommand extends CommandNeedsSecurityPin {
     }
 
     encode(): Buffer {
-        const buffer = Buffer.alloc(94);
+        const buffer = Buffer.alloc(92);
         let ofs = 0;
         buffer.writeUInt32LE(this.authorizationId, ofs);
         ofs += 4;
@@ -80,8 +76,6 @@ export class UpdateAuthorizationEntryCommand extends CommandNeedsSecurityPin {
         ofs += 1;
         buffer.writeUInt8(this.remoteAllowed, ofs);
         ofs += 1;
-        buffer.writeUInt16LE(this.lockCount, ofs);
-        ofs += 2;
         buffer.writeUInt8(this.timeLimited, ofs);
         ofs += 1;
         writeDateTime(buffer, this.allowedFromDate, ofs);
@@ -106,7 +100,6 @@ export class UpdateAuthorizationEntryCommand extends CommandNeedsSecurityPin {
         str += "\n  name: " + this.name;
         str += "\n  enabled: " + "0x" + this.enabled.toString(16).padStart(2, "0");
         str += "\n  remoteAllowed: " + "0x" + this.remoteAllowed.toString(16).padStart(2, "0");
-        str += "\n  lockCount: " + "0x" + this.lockCount.toString(16).padStart(4, "0");
         str += "\n  timeLimited: " + "0x" + this.timeLimited.toString(16).padStart(2, "0");
         str += "\n  allowedFromDate: " + this.allowedFromDate.toISOString();
         str += "\n  allowedUntilDate: " + this.allowedUntilDate.toISOString();

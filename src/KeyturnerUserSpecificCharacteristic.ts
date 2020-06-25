@@ -48,6 +48,13 @@ import {checkCrc, setCrc} from "./command/Util";
 import {SetAdvancedConfigCommand} from "./command/SetAdvancedConfigCommand";
 import {CommandNeedsChallenge} from "./command/CommandNeedsChallenge";
 import {CommandNeedsSecurityPin} from "./command/CommandNeedsSecurityPin";
+import {RequestAuthorizationEntriesCommand} from "./command/RequestAuthorizationEntriesCommand";
+import {AuthorizationEntryCountCommand} from "./command/AuthorizationEntryCountCommand";
+import {AuthorizationEntryCommand} from "./command/AuthorizationEntryCommand";
+import {UpdateAuthorizationEntryCommand} from "./command/UpdateAuthorizationEntryCommand";
+import {RequestLogEntriesCommand} from "./command/RequestLogEntriesCommand";
+import {LogEntryCountCommand} from "./command/LogEntryCountCommand";
+import {EnableLoggingCommand} from "./command/EnableLoggingCommand";
 
 interface KeyturnerStateInitial {
     key: "Initial"
@@ -343,8 +350,51 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
 
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof RemoveAuthorizationEntryCommand) {
+            const user = this.config.getUser(command.authorizationId);
+            if (!user) {
+                return new ErrorCommand(K_ERROR_INVALID_AUTH_ID, command.id, `User does not exist ${command.authorizationId}`);
+            }
+
             this.config.removeUser(command.authorizationId);
             await this.config.save();
+
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof RequestAuthorizationEntriesCommand) {
+            const users = this.config.getUsersArray();
+            if (command.offset === 0) {
+                await this.sendCommand(new AuthorizationEntryCountCommand(users.length), encryptionContext);
+            }
+            for (const user of users.slice(command.offset, command.offset + command.count)) {
+                await this.sendCommand(new AuthorizationEntryCommand(
+                    user.authorizationId,
+                    user.appType,
+                    user.name,
+                    1, 1
+                ), encryptionContext);
+            }
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof UpdateAuthorizationEntryCommand) {
+            const user = this.config.getUser(command.authorizationId);
+            if (!user) {
+                return new ErrorCommand(K_ERROR_INVALID_AUTH_ID, command.id, `User does not exist ${command.authorizationId}`);
+            }
+
+            this.config.addOrReplaceUser({
+                ...user,
+                name: command.name
+            });
+            await this.config.save();
+
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof RequestLogEntriesCommand) {
+            if (command.totalCount) {
+                await this.sendCommand(new LogEntryCountCommand(1, 0, 0, 0), encryptionContext);
+            }
+            // TODO: implement logging
+
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof EnableLoggingCommand) {
+            // TODO: implement logging
 
             return new StatusCommand(STATUS_COMPLETE);
         } else {
