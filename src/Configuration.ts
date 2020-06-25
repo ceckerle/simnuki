@@ -31,9 +31,13 @@ export class Configuration {
             const arrUUID = new Array(16);
             uuid.v1(null, arrUUID);
             this.config.set('uuid', new Buffer(arrUUID).toString('hex'));
-            const nukiId = random(4).toString("hex").toUpperCase();
-            this.config.set('nukiId', nukiId);
-            this.config.set('name', "Nuki_" + nukiId);
+            let nukiId: Buffer;
+            do {
+                nukiId = random(4);
+            } while (nukiId.readInt32BE(0) <= 0); // Android app crashes with ids <= 0
+            const nukiIdStr = nukiId.toString("hex").toUpperCase();
+            this.config.set('nukiId', nukiIdStr);
+            this.config.set('name', "Nuki_" + nukiIdStr);
             this.config.set('nukiState', NUKI_STATE_UNINITIALIZED);
             this.config.set("lockState", LOCK_STATE_UNCALIBRATED);
             // TODO: init async
