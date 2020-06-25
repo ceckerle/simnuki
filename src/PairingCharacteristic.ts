@@ -210,6 +210,9 @@ export class PairingCharacteristic extends DataIoCharacteristic {
             }
 
             console.log("Pairing: 5 authenticator is valid, pairing complete");
+            this.state = {
+                key: "Initial"
+            }
             return new StatusCommand(STATUS_COMPLETE);
         } else {
             return new ErrorCommand(ERROR_UNKNOWN, command.id, `bad command ${command.id}`)

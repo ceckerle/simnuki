@@ -1,4 +1,4 @@
-import {readDateTime, readString, writeDateTime, writeString} from "./Util";
+import {readDateTime, readString, readUInt24BE, writeDateTime, writeString, writeUInt24BE} from "./Util";
 
 test("writeString and readString", () => {
     let target = new Buffer("01234567890abcdef01234567890abcdef", "hex")
@@ -17,4 +17,13 @@ test("writeTime and readTime", () => {
     writeDateTime(target, date);
     expect(target.toString("hex")).toBe("cf0707080c2238");
     expect(readDateTime(target)).toEqual(date);
+});
+
+test("writeUInt24BE and readUInt24BE", () => {
+    const value = 0x010203;
+    const target = new Buffer("0123456789abcdef", "hex");
+    writeUInt24BE(target, value, 2);
+    expect(target.toString("hex")).toEqual("0123010203abcdef");
+    expect(readUInt24BE(target, 2)).toBe(value);
+
 });

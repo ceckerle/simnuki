@@ -56,7 +56,7 @@ export function writeDateTime(buffer: Buffer, date: Date, offset = 0): void {
 }
 
 export function readUInt24BE(buffer: Buffer, offset: number): number {
-    return buffer.readUInt8(offset++) << 16 + buffer.readUInt16BE(offset);
+    return (buffer.readUInt8(offset++) << 16) + buffer.readUInt16BE(offset);
 }
 
 export function writeUInt24BE(buffer: Buffer, value: number, offset: number): void {

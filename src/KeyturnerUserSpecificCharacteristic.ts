@@ -188,16 +188,16 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 this.config.get("latitude"),
                 this.config.get("longitude"),
                 this.config.get("autoUnlatch"),
-                this.config.get("pairingEnabled"),
-                this.config.get("buttonEnabled"),
-                this.config.get("ledFlashEnabled"),
-                this.config.get("ledBrightness"),
+                this.config.get("pairingEnabled") ?? 1,
+                this.config.get("buttonEnabled") ?? 1,
+                this.config.get("ledFlashEnabled") ?? 1,
+                this.config.get("ledBrightness") ?? 1,
                 now,
                 -now.getTimezoneOffset(),
                 this.config.get("dstMode") ?? 1,
                 1,
-                this.config.get("fobAction1") || 1, // unlock
-                this.config.get("fobAction2") || 2, // lock
+                this.config.get("fobAction1") ?? 1, // unlock
+                this.config.get("fobAction2") ?? 2, // lock
                 this.config.get("fobAction3"),
                 this.config.get("singleLock"),
                 this.config.get("advertisingMode"),
@@ -205,7 +205,7 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
                 FIRMWARE_VERSION,
                 HARDWARE_VERSION,
                 0,
-                this.config.get("timezoneId") | 0
+                this.config.get("timezoneId") ?? 37
             );
         } else if (command instanceof SetConfigCommand) {
             this.config.setName(command.name);
@@ -353,12 +353,13 @@ export class KeyturnerUserSpecificCharacteristic extends DataIoCharacteristic {
     }
 
     private buildStateCommand(): KeyturnerStatesCommand {
+        const now = new Date();
         return new KeyturnerStatesCommand(
             this.config.getNukiState(),
             this.config.getLockState(),
             0, // bluetooth
-            new Date(),
-            0,
+            now,
+            -now.getTimezoneOffset(),
             0,
             0,
             0,
