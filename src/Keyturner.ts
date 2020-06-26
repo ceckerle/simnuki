@@ -1,17 +1,14 @@
 import * as bleno from "@abandonware/bleno";
 import {Advertiser} from "./Advertiser";
-import {InitializationService} from "./InitializationService";
 import {PairingService} from "./PairingService";
 import {KeyturnerService} from "./KeyturnerService";
 import {DeviceInformationService} from "./DeviceInformationService";
-import {NUKI_STATE_DOOR_MODE, NUKI_STATE_PAIRING_MODE, NUKI_STATE_UNINITIALIZED} from "./Protocol";
 import {Configuration} from "./Configuration";
 
 export class Keyturner {
 
     private config: Configuration;
     private advertiser: Advertiser;
-    private keyturnerInitializationService: InitializationService;
     private keyturnerPairingService: PairingService;
     private keyturnerService: KeyturnerService;
     private deviceInformationService: DeviceInformationService;
@@ -19,7 +16,6 @@ export class Keyturner {
     constructor() {
         this.config = new Configuration();
         this.advertiser = new Advertiser(this.config);
-        this.keyturnerInitializationService = new InitializationService();
         this.keyturnerPairingService = new PairingService(this.config);
         this.keyturnerService = new KeyturnerService(this.config);
         this.deviceInformationService = new DeviceInformationService(this.config);
@@ -34,6 +30,11 @@ export class Keyturner {
         bleno.on('addressChange', this.onAddressChange);
         bleno.on('rssiUpdate', this.onRssiUpdate);
         bleno.on('servicesSet', this.onServicesSet);
+        bleno.setServices([
+            this.keyturnerPairingService,
+            this.keyturnerService,
+            this.deviceInformationService
+        ]);
         await this.advertiser.init();
     }
 
@@ -43,37 +44,6 @@ export class Keyturner {
 
     private onAccept = (address: string) => {
         console.log('on -> accept: ' + address);
-        const nukiState = this.config.getNukiState();
-        switch (nukiState) {
-            case NUKI_STATE_UNINITIALIZED:
-                console.log("Nuki state: uninitialized");
-                bleno.setServices([
-                    this.keyturnerInitializationService,
-                    this.keyturnerPairingService,
-                    this.keyturnerService,
-                    this.deviceInformationService
-                ]);
-                break;
-            case NUKI_STATE_PAIRING_MODE:
-                console.log("Nuki state: pairing");
-                bleno.setServices([
-                    this.keyturnerPairingService,
-                    this.keyturnerService,
-                    this.deviceInformationService
-                ]);
-                break;
-            case NUKI_STATE_DOOR_MODE:
-                console.log("Nuki state: door");
-                bleno.setServices([
-                    this.keyturnerPairingService,
-                    this.keyturnerService,
-                    this.deviceInformationService
-                ]);
-                break;
-            default:
-                bleno.setServices([]);
-                break;
-        }
     }
 
     private onDisconnect = () => {
