@@ -13,20 +13,20 @@ export class AdvancedConfigCommand extends Command {
     lockngoTimeout: number;
     singleButtonPressAction: number;
     doubleButtonPressAction: number;
-    detachedCylinder: number;
+    detachedCylinder: boolean;
     batteryType: number;
-    automaticBatteryTypeDetection: number;
+    automaticBatteryTypeDetection: boolean;
     unlatchDuration: number;
     autoLockTimeout: number;
-    autoUnlockDisabled: number;
-    nightmodeEnabled: number;
+    autoUnlockDisabled: boolean;
+    nightmodeEnabled: boolean;
     nightmodeStartTime: number;
     nightmodeEndTime: number;
-    nightmodeAutoLockEnabled: number;
-    nightmodeAutoUnlockDisabled: number;
-    nightmodeImmediateLockOnStart: number;
+    nightmodeAutoLockEnabled: boolean;
+    nightmodeAutoUnlockDisabled: boolean;
+    nightmodeImmediateLockOnStart: boolean;
 
-    constructor(totalDegrees?: number, unlockedPositionOffsetDegrees?: number, lockedPositionOffsetDegrees?: number, singleLockedPositionOffsetDegrees?: number, unlockedToLockedTransitionOffsetDegrees?: number, lockngoTimeout?: number, singleButtonPressAction?: number, doubleButtonPressAction?: number, detachedCylinder?: number, batteryType?: number, automaticBatteryTypeDetection?: number, unlatchDuration?: number, autoLockTimeout?: number, autoUnlockDisabled?: number, nightmodeEnabled?: number, nightmodeStartTime?: number, nightmodeEndTime?: number, nightmodeAutoLockEnabled?: number, nightmodeAutoUnlockDisabled?: number, nightmodeImmediateLockOnStart?: number) {
+    constructor(totalDegrees?: number, unlockedPositionOffsetDegrees?: number, lockedPositionOffsetDegrees?: number, singleLockedPositionOffsetDegrees?: number, unlockedToLockedTransitionOffsetDegrees?: number, lockngoTimeout?: number, singleButtonPressAction?: number, doubleButtonPressAction?: number, detachedCylinder?: boolean, batteryType?: number, automaticBatteryTypeDetection?: boolean, unlatchDuration?: number, autoLockTimeout?: number, autoUnlockDisabled?: boolean, nightmodeEnabled?: boolean, nightmodeStartTime?: number, nightmodeEndTime?: number, nightmodeAutoLockEnabled?: boolean, nightmodeAutoUnlockDisabled?: boolean, nightmodeImmediateLockOnStart?: boolean) {
         super();
         this.totalDegrees = totalDegrees ?? 0;
         this.unlockedPositionOffsetDegrees = unlockedPositionOffsetDegrees ?? 0;
@@ -36,18 +36,18 @@ export class AdvancedConfigCommand extends Command {
         this.lockngoTimeout = lockngoTimeout ?? 0;
         this.singleButtonPressAction = singleButtonPressAction ?? 0;
         this.doubleButtonPressAction = doubleButtonPressAction ?? 0;
-        this.detachedCylinder = detachedCylinder ?? 0;
+        this.detachedCylinder = detachedCylinder ?? false;
         this.batteryType = batteryType ?? 0;
-        this.automaticBatteryTypeDetection = automaticBatteryTypeDetection ?? 0;
+        this.automaticBatteryTypeDetection = automaticBatteryTypeDetection ?? false;
         this.unlatchDuration = unlatchDuration ?? 0;
         this.autoLockTimeout = autoLockTimeout ?? 0;
-        this.autoUnlockDisabled = autoUnlockDisabled ?? 0;
-        this.nightmodeEnabled = nightmodeEnabled ?? 0;
+        this.autoUnlockDisabled = autoUnlockDisabled ?? false;
+        this.nightmodeEnabled = nightmodeEnabled ?? false;
         this.nightmodeStartTime = nightmodeStartTime ?? 0;
         this.nightmodeEndTime = nightmodeEndTime ?? 0;
-        this.nightmodeAutoLockEnabled = nightmodeAutoLockEnabled ?? 0;
-        this.nightmodeAutoUnlockDisabled = nightmodeAutoUnlockDisabled ?? 0;
-        this.nightmodeImmediateLockOnStart = nightmodeImmediateLockOnStart ?? 0;
+        this.nightmodeAutoLockEnabled = nightmodeAutoLockEnabled ?? false;
+        this.nightmodeAutoUnlockDisabled = nightmodeAutoUnlockDisabled ?? false;
+        this.nightmodeImmediateLockOnStart = nightmodeImmediateLockOnStart ?? false;
     }
     
     decode(buffer: Buffer): void {
@@ -71,29 +71,29 @@ export class AdvancedConfigCommand extends Command {
         ofs += 1;
         this.doubleButtonPressAction = buffer.readUInt8(ofs);
         ofs += 1;
-        this.detachedCylinder = buffer.readUInt8(ofs);
+        this.detachedCylinder = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.batteryType = buffer.readUInt8(ofs);
         ofs += 1;
-        this.automaticBatteryTypeDetection = buffer.readUInt8(ofs);
+        this.automaticBatteryTypeDetection = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.unlatchDuration = buffer.readUInt8(ofs);
         ofs += 1;
         this.autoLockTimeout = buffer.readUInt16LE(ofs);
         ofs += 2;
-        this.autoUnlockDisabled = buffer.readUInt8(ofs);
+        this.autoUnlockDisabled = buffer.readUInt8(ofs) === 1;
         ofs += 1;
-        this.nightmodeEnabled = buffer.readUInt8(ofs);
+        this.nightmodeEnabled = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.nightmodeStartTime = buffer.readUInt16LE(ofs);
         ofs += 2;
         this.nightmodeEndTime = buffer.readUInt16LE(ofs);
         ofs += 2;
-        this.nightmodeAutoLockEnabled = buffer.readUInt8(ofs);
+        this.nightmodeAutoLockEnabled = buffer.readUInt8(ofs) === 1;
         ofs += 1;
-        this.nightmodeAutoUnlockDisabled = buffer.readUInt8(ofs);
+        this.nightmodeAutoUnlockDisabled = buffer.readUInt8(ofs) === 1;
         ofs += 1;
-        this.nightmodeImmediateLockOnStart = buffer.readUInt8(ofs);
+        this.nightmodeImmediateLockOnStart = buffer.readUInt8(ofs) === 1;
     }
 
     encode(): Buffer {
@@ -115,29 +115,29 @@ export class AdvancedConfigCommand extends Command {
         ofs += 1;
         buffer.writeUInt8(this.doubleButtonPressAction, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.detachedCylinder, ofs);
+        buffer.writeUInt8(this.detachedCylinder === true ? 1 : 0, ofs);
         ofs += 1;
         buffer.writeUInt8(this.batteryType, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.automaticBatteryTypeDetection, ofs);
+        buffer.writeUInt8(this.automaticBatteryTypeDetection === true ? 1 : 0, ofs);
         ofs += 1;
         buffer.writeUInt8(this.unlatchDuration, ofs);
         ofs += 1;
         buffer.writeUInt16LE(this.autoLockTimeout, ofs);
         ofs += 2;
-        buffer.writeUInt8(this.autoUnlockDisabled, ofs);
+        buffer.writeUInt8(this.autoUnlockDisabled === true ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.nightmodeEnabled, ofs);
+        buffer.writeUInt8(this.nightmodeEnabled === true ? 1 : 0, ofs);
         ofs += 1;
         buffer.writeUInt16LE(this.nightmodeStartTime, ofs);
         ofs += 2;
         buffer.writeUInt16LE(this.nightmodeEndTime, ofs);
         ofs += 2;
-        buffer.writeUInt8(this.nightmodeAutoLockEnabled, ofs);
+        buffer.writeUInt8(this.nightmodeAutoLockEnabled === true ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.nightmodeAutoUnlockDisabled, ofs);
+        buffer.writeUInt8(this.nightmodeAutoUnlockDisabled === true ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.nightmodeImmediateLockOnStart, ofs);
+        buffer.writeUInt8(this.nightmodeImmediateLockOnStart === true ? 1 : 0, ofs);
         return buffer;
     }
     
@@ -151,18 +151,18 @@ export class AdvancedConfigCommand extends Command {
         str += "\n  lockngoTimeout: " + "0x" + this.lockngoTimeout.toString(16).padStart(2, "0");
         str += "\n  singleButtonPressAction: " + "0x" + this.singleButtonPressAction.toString(16).padStart(2, "0");
         str += "\n  doubleButtonPressAction: " + "0x" + this.doubleButtonPressAction.toString(16).padStart(2, "0");
-        str += "\n  detachedCylinder: " + "0x" + this.detachedCylinder.toString(16).padStart(2, "0");
+        str += "\n  detachedCylinder: " + this.detachedCylinder;
         str += "\n  batteryType: " + "0x" + this.batteryType.toString(16).padStart(2, "0");
-        str += "\n  automaticBatteryTypeDetection: " + "0x" + this.automaticBatteryTypeDetection.toString(16).padStart(2, "0");
+        str += "\n  automaticBatteryTypeDetection: " + this.automaticBatteryTypeDetection;
         str += "\n  unlatchDuration: " + "0x" + this.unlatchDuration.toString(16).padStart(2, "0");
         str += "\n  autoLockTimeout: " + "0x" + this.autoLockTimeout.toString(16).padStart(4, "0");
-        str += "\n  autoUnlockDisabled: " + "0x" + this.autoUnlockDisabled.toString(16).padStart(2, "0");
-        str += "\n  nightmodeEnabled: " + "0x" + this.nightmodeEnabled.toString(16).padStart(2, "0");
+        str += "\n  autoUnlockDisabled: " + this.autoUnlockDisabled;
+        str += "\n  nightmodeEnabled: " + this.nightmodeEnabled;
         str += "\n  nightmodeStartTime: " + "0x" + this.nightmodeStartTime.toString(16).padStart(4, "0");
         str += "\n  nightmodeEndTime: " + "0x" + this.nightmodeEndTime.toString(16).padStart(4, "0");
-        str += "\n  nightmodeAutoLockEnabled: " + "0x" + this.nightmodeAutoLockEnabled.toString(16).padStart(2, "0");
-        str += "\n  nightmodeAutoUnlockDisabled: " + "0x" + this.nightmodeAutoUnlockDisabled.toString(16).padStart(2, "0");
-        str += "\n  nightmodeImmediateLockOnStart: " + "0x" + this.nightmodeImmediateLockOnStart.toString(16).padStart(2, "0");
+        str += "\n  nightmodeAutoLockEnabled: " + this.nightmodeAutoLockEnabled;
+        str += "\n  nightmodeAutoUnlockDisabled: " + this.nightmodeAutoUnlockDisabled;
+        str += "\n  nightmodeImmediateLockOnStart: " + this.nightmodeImmediateLockOnStart;
         str += "\n}";
         return str;
     }

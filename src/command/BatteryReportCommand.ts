@@ -7,7 +7,7 @@ export class BatteryReportCommand extends Command {
     readonly id = CMD_BATTERY_REPORT;
     batteryDrain: number;
     batteryVoltage: number;
-    criticalBatteryState: number;
+    criticalBatteryState: boolean;
     locakAction: number;
     startVoltage: number;
     lowestVoltage: number;
@@ -16,11 +16,11 @@ export class BatteryReportCommand extends Command {
     maxTurnCurrent: number;
     batteryResistance: number;
 
-    constructor(batteryDrain?: number, batteryVoltage?: number, criticalBatteryState?: number, locakAction?: number, startVoltage?: number, lowestVoltage?: number, lockDistance?: number, startTemperature?: number, maxTurnCurrent?: number, batteryResistance?: number) {
+    constructor(batteryDrain?: number, batteryVoltage?: number, criticalBatteryState?: boolean, locakAction?: number, startVoltage?: number, lowestVoltage?: number, lockDistance?: number, startTemperature?: number, maxTurnCurrent?: number, batteryResistance?: number) {
         super();
         this.batteryDrain = batteryDrain ?? 0;
         this.batteryVoltage = batteryVoltage ?? 0;
-        this.criticalBatteryState = criticalBatteryState ?? 0;
+        this.criticalBatteryState = criticalBatteryState ?? false;
         this.locakAction = locakAction ?? 0;
         this.startVoltage = startVoltage ?? 0;
         this.lowestVoltage = lowestVoltage ?? 0;
@@ -39,7 +39,7 @@ export class BatteryReportCommand extends Command {
         ofs += 2;
         this.batteryVoltage = buffer.readUInt16LE(ofs);
         ofs += 2;
-        this.criticalBatteryState = buffer.readUInt8(ofs);
+        this.criticalBatteryState = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.locakAction = buffer.readUInt8(ofs);
         ofs += 1;
@@ -63,7 +63,7 @@ export class BatteryReportCommand extends Command {
         ofs += 2;
         buffer.writeUInt16LE(this.batteryVoltage, ofs);
         ofs += 2;
-        buffer.writeUInt8(this.criticalBatteryState, ofs);
+        buffer.writeUInt8(this.criticalBatteryState === true ? 1 : 0, ofs);
         ofs += 1;
         buffer.writeUInt8(this.locakAction, ofs);
         ofs += 1;
@@ -85,7 +85,7 @@ export class BatteryReportCommand extends Command {
         let str = "BatteryReportCommand {";
         str += "\n  batteryDrain: " + "0x" + this.batteryDrain.toString(16).padStart(4, "0");
         str += "\n  batteryVoltage: " + "0x" + this.batteryVoltage.toString(16).padStart(4, "0");
-        str += "\n  criticalBatteryState: " + "0x" + this.criticalBatteryState.toString(16).padStart(2, "0");
+        str += "\n  criticalBatteryState: " + this.criticalBatteryState;
         str += "\n  locakAction: " + "0x" + this.locakAction.toString(16).padStart(2, "0");
         str += "\n  startVoltage: " + "0x" + this.startVoltage.toString(16).padStart(4, "0");
         str += "\n  lowestVoltage: " + "0x" + this.lowestVoltage.toString(16).padStart(4, "0");

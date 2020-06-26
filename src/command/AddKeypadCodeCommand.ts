@@ -8,7 +8,7 @@ export class AddKeypadCodeCommand extends CommandNeedsSecurityPin {
     readonly id = CMD_ADD_KEYPAD_CODE;
     code: number;
     name: string;
-    timeLimited: number;
+    timeLimited: boolean;
     allowedFromDate: Date;
     allowedUntilDate: Date;
     allowedWeekdays: number;
@@ -17,11 +17,11 @@ export class AddKeypadCodeCommand extends CommandNeedsSecurityPin {
     nonce: Buffer;
     securityPin: number;
 
-    constructor(code?: number, name?: string, timeLimited?: number, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number, nonce?: Buffer, securityPin?: number) {
+    constructor(code?: number, name?: string, timeLimited?: boolean, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number, nonce?: Buffer, securityPin?: number) {
         super();
         this.code = code ?? 0;
         this.name = name ?? "";
-        this.timeLimited = timeLimited ?? 0;
+        this.timeLimited = timeLimited ?? false;
         this.allowedFromDate = allowedFromDate ?? new Date();
         this.allowedUntilDate = allowedUntilDate ?? new Date();
         this.allowedWeekdays = allowedWeekdays ?? 0;
@@ -40,7 +40,7 @@ export class AddKeypadCodeCommand extends CommandNeedsSecurityPin {
         ofs += 4;
         this.name = readString(buffer, ofs, 20);
         ofs += 20;
-        this.timeLimited = buffer.readUInt8(ofs);
+        this.timeLimited = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.allowedFromDate = readDateTime(buffer, ofs);
         ofs += 7;
@@ -64,7 +64,7 @@ export class AddKeypadCodeCommand extends CommandNeedsSecurityPin {
         ofs += 4;
         writeString(buffer, this.name, ofs, 20);
         ofs += 20;
-        buffer.writeUInt8(this.timeLimited, ofs);
+        buffer.writeUInt8(this.timeLimited === true ? 1 : 0, ofs);
         ofs += 1;
         writeDateTime(buffer, this.allowedFromDate, ofs);
         ofs += 7;
@@ -86,7 +86,7 @@ export class AddKeypadCodeCommand extends CommandNeedsSecurityPin {
         let str = "AddKeypadCodeCommand {";
         str += "\n  code: " + "0x" + this.code.toString(16).padStart(8, "0");
         str += "\n  name: " + this.name;
-        str += "\n  timeLimited: " + "0x" + this.timeLimited.toString(16).padStart(2, "0");
+        str += "\n  timeLimited: " + this.timeLimited;
         str += "\n  allowedFromDate: " + this.allowedFromDate.toISOString();
         str += "\n  allowedUntilDate: " + this.allowedUntilDate.toISOString();
         str += "\n  allowedWeekdays: " + "0x" + this.allowedWeekdays.toString(16).padStart(2, "0");

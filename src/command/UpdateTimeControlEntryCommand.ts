@@ -6,17 +6,17 @@ export class UpdateTimeControlEntryCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_UPDATE_TIME_CONTROL_ENTRY;
     entryId: number;
-    enabled: number;
+    enabled: boolean;
     weekdays: number;
     time: number;
     lockAction: number;
     nonce: Buffer;
     securityPin: number;
 
-    constructor(entryId?: number, enabled?: number, weekdays?: number, time?: number, lockAction?: number, nonce?: Buffer, securityPin?: number) {
+    constructor(entryId?: number, enabled?: boolean, weekdays?: number, time?: number, lockAction?: number, nonce?: Buffer, securityPin?: number) {
         super();
         this.entryId = entryId ?? 0;
-        this.enabled = enabled ?? 0;
+        this.enabled = enabled ?? false;
         this.weekdays = weekdays ?? 0;
         this.time = time ?? 0;
         this.lockAction = lockAction ?? 0;
@@ -31,7 +31,7 @@ export class UpdateTimeControlEntryCommand extends CommandNeedsSecurityPin {
         let ofs = 0;
         this.entryId = buffer.readUInt8(ofs);
         ofs += 1;
-        this.enabled = buffer.readUInt8(ofs);
+        this.enabled = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.weekdays = buffer.readUInt8(ofs);
         ofs += 1;
@@ -49,7 +49,7 @@ export class UpdateTimeControlEntryCommand extends CommandNeedsSecurityPin {
         let ofs = 0;
         buffer.writeUInt8(this.entryId, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.enabled, ofs);
+        buffer.writeUInt8(this.enabled === true ? 1 : 0, ofs);
         ofs += 1;
         buffer.writeUInt8(this.weekdays, ofs);
         ofs += 1;
@@ -66,7 +66,7 @@ export class UpdateTimeControlEntryCommand extends CommandNeedsSecurityPin {
     toString(): string {
         let str = "UpdateTimeControlEntryCommand {";
         str += "\n  entryId: " + "0x" + this.entryId.toString(16).padStart(2, "0");
-        str += "\n  enabled: " + "0x" + this.enabled.toString(16).padStart(2, "0");
+        str += "\n  enabled: " + this.enabled;
         str += "\n  weekdays: " + "0x" + this.weekdays.toString(16).padStart(2, "0");
         str += "\n  time: " + "0x" + this.time.toString(16).padStart(4, "0");
         str += "\n  lockAction: " + "0x" + this.lockAction.toString(16).padStart(2, "0");

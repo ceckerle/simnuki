@@ -9,8 +9,8 @@ export class AuthorizationDataInviteCommand extends CommandNeedsSecurityPin {
     name: string;
     idType: number;
     sharedKey: Buffer;
-    remoteAllowed: number;
-    timeLimited: number;
+    remoteAllowed: boolean;
+    timeLimited: boolean;
     allowedFromDate: Date;
     allowedUntilDate: Date;
     allowedWeekdays: number;
@@ -19,13 +19,13 @@ export class AuthorizationDataInviteCommand extends CommandNeedsSecurityPin {
     nonce: Buffer;
     securityPin: number;
 
-    constructor(name?: string, idType?: number, sharedKey?: Buffer, remoteAllowed?: number, timeLimited?: number, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number, nonce?: Buffer, securityPin?: number) {
+    constructor(name?: string, idType?: number, sharedKey?: Buffer, remoteAllowed?: boolean, timeLimited?: boolean, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number, nonce?: Buffer, securityPin?: number) {
         super();
         this.name = name ?? "";
         this.idType = idType ?? 0;
         this.sharedKey = sharedKey ?? Buffer.alloc(32);
-        this.remoteAllowed = remoteAllowed ?? 0;
-        this.timeLimited = timeLimited ?? 0;
+        this.remoteAllowed = remoteAllowed ?? false;
+        this.timeLimited = timeLimited ?? false;
         this.allowedFromDate = allowedFromDate ?? new Date();
         this.allowedUntilDate = allowedUntilDate ?? new Date();
         this.allowedWeekdays = allowedWeekdays ?? 0;
@@ -46,9 +46,9 @@ export class AuthorizationDataInviteCommand extends CommandNeedsSecurityPin {
         ofs += 1;
         this.sharedKey = buffer.slice(ofs, ofs + 32);
         ofs += 32;
-        this.remoteAllowed = buffer.readUInt8(ofs);
+        this.remoteAllowed = buffer.readUInt8(ofs) === 1;
         ofs += 1;
-        this.timeLimited = buffer.readUInt8(ofs);
+        this.timeLimited = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.allowedFromDate = readDateTime(buffer, ofs);
         ofs += 7;
@@ -74,9 +74,9 @@ export class AuthorizationDataInviteCommand extends CommandNeedsSecurityPin {
         ofs += 1;
         this.sharedKey.copy(buffer, ofs);
         ofs += 32;
-        buffer.writeUInt8(this.remoteAllowed, ofs);
+        buffer.writeUInt8(this.remoteAllowed === true ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.timeLimited, ofs);
+        buffer.writeUInt8(this.timeLimited === true ? 1 : 0, ofs);
         ofs += 1;
         writeDateTime(buffer, this.allowedFromDate, ofs);
         ofs += 7;
@@ -99,8 +99,8 @@ export class AuthorizationDataInviteCommand extends CommandNeedsSecurityPin {
         str += "\n  name: " + this.name;
         str += "\n  idType: " + "0x" + this.idType.toString(16).padStart(2, "0");
         str += "\n  sharedKey: " + "0x" + this.sharedKey.toString("hex");
-        str += "\n  remoteAllowed: " + "0x" + this.remoteAllowed.toString(16).padStart(2, "0");
-        str += "\n  timeLimited: " + "0x" + this.timeLimited.toString(16).padStart(2, "0");
+        str += "\n  remoteAllowed: " + this.remoteAllowed;
+        str += "\n  timeLimited: " + this.timeLimited;
         str += "\n  allowedFromDate: " + this.allowedFromDate.toISOString();
         str += "\n  allowedUntilDate: " + this.allowedUntilDate.toISOString();
         str += "\n  allowedWeekdays: " + "0x" + this.allowedWeekdays.toString(16).padStart(2, "0");

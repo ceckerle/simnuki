@@ -11,7 +11,7 @@ export class KeyturnerStatesCommand extends Command {
     trigger: number;
     currentTime: Date;
     timezoneOffset: number;
-    criticalBatteryState: number;
+    criticalBatteryState: boolean;
     configUpdateCount: number;
     lockngoTimer: number;
     lastLockAction: number;
@@ -19,14 +19,14 @@ export class KeyturnerStatesCommand extends Command {
     lastLockActionCompletionState: number;
     doorSensorState: number;
 
-    constructor(nukState?: number, lockState?: number, trigger?: number, currentTime?: Date, timezoneOffset?: number, criticalBatteryState?: number, configUpdateCount?: number, lockngoTimer?: number, lastLockAction?: number, lastLockActionTrigger?: number, lastLockActionCompletionState?: number, doorSensorState?: number) {
+    constructor(nukState?: number, lockState?: number, trigger?: number, currentTime?: Date, timezoneOffset?: number, criticalBatteryState?: boolean, configUpdateCount?: number, lockngoTimer?: number, lastLockAction?: number, lastLockActionTrigger?: number, lastLockActionCompletionState?: number, doorSensorState?: number) {
         super();
         this.nukState = nukState ?? 0;
         this.lockState = lockState ?? 0;
         this.trigger = trigger ?? 0;
         this.currentTime = currentTime ?? new Date();
         this.timezoneOffset = timezoneOffset ?? 0;
-        this.criticalBatteryState = criticalBatteryState ?? 0;
+        this.criticalBatteryState = criticalBatteryState ?? false;
         this.configUpdateCount = configUpdateCount ?? 0;
         this.lockngoTimer = lockngoTimer ?? 0;
         this.lastLockAction = lastLockAction ?? 0;
@@ -50,7 +50,7 @@ export class KeyturnerStatesCommand extends Command {
         ofs += 7;
         this.timezoneOffset = buffer.readInt16LE(ofs);
         ofs += 2;
-        this.criticalBatteryState = buffer.readUInt8(ofs);
+        this.criticalBatteryState = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.configUpdateCount = buffer.readUInt8(ofs);
         ofs += 1;
@@ -78,7 +78,7 @@ export class KeyturnerStatesCommand extends Command {
         ofs += 7;
         buffer.writeInt16LE(this.timezoneOffset, ofs);
         ofs += 2;
-        buffer.writeUInt8(this.criticalBatteryState, ofs);
+        buffer.writeUInt8(this.criticalBatteryState === true ? 1 : 0, ofs);
         ofs += 1;
         buffer.writeUInt8(this.configUpdateCount, ofs);
         ofs += 1;
@@ -101,7 +101,7 @@ export class KeyturnerStatesCommand extends Command {
         str += "\n  trigger: " + "0x" + this.trigger.toString(16).padStart(2, "0");
         str += "\n  currentTime: " + this.currentTime.toISOString();
         str += "\n  timezoneOffset: " + "0x" + this.timezoneOffset.toString(16).padStart(4, "0");
-        str += "\n  criticalBatteryState: " + "0x" + this.criticalBatteryState.toString(16).padStart(2, "0");
+        str += "\n  criticalBatteryState: " + this.criticalBatteryState;
         str += "\n  configUpdateCount: " + "0x" + this.configUpdateCount.toString(16).padStart(2, "0");
         str += "\n  lockngoTimer: " + "0x" + this.lockngoTimer.toString(16).padStart(2, "0");
         str += "\n  lastLockAction: " + "0x" + this.lastLockAction.toString(16).padStart(2, "0");

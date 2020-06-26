@@ -5,13 +5,13 @@ import {DecodingError} from "./DecodingError";
 export class EnableLoggingCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_ENABLE_LOGGING;
-    enabled: number;
+    enabled: boolean;
     nonce: Buffer;
     securityPin: number;
 
-    constructor(enabled?: number, nonce?: Buffer, securityPin?: number) {
+    constructor(enabled?: boolean, nonce?: Buffer, securityPin?: number) {
         super();
-        this.enabled = enabled ?? 0;
+        this.enabled = enabled ?? false;
         this.nonce = nonce ?? Buffer.alloc(32);
         this.securityPin = securityPin ?? 0;
     }
@@ -21,7 +21,7 @@ export class EnableLoggingCommand extends CommandNeedsSecurityPin {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
-        this.enabled = buffer.readUInt8(ofs);
+        this.enabled = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.nonce = buffer.slice(ofs, ofs + 32);
         ofs += 32;
@@ -31,7 +31,7 @@ export class EnableLoggingCommand extends CommandNeedsSecurityPin {
     encode(): Buffer {
         const buffer = Buffer.alloc(35);
         let ofs = 0;
-        buffer.writeUInt8(this.enabled, ofs);
+        buffer.writeUInt8(this.enabled === true ? 1 : 0, ofs);
         ofs += 1;
         this.nonce.copy(buffer, ofs);
         ofs += 32;
@@ -41,7 +41,7 @@ export class EnableLoggingCommand extends CommandNeedsSecurityPin {
     
     toString(): string {
         let str = "EnableLoggingCommand {";
-        str += "\n  enabled: " + "0x" + this.enabled.toString(16).padStart(2, "0");
+        str += "\n  enabled: " + this.enabled;
         str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
         str += "\n  securityPin: " + "0x" + this.securityPin.toString(16).padStart(4, "0");
         str += "\n}";

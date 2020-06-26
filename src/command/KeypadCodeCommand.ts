@@ -9,25 +9,27 @@ export class KeypadCodeCommand extends Command {
     codeId: number;
     code: number;
     name: string;
+    enabled: boolean;
     dateCreated: Date;
     dateLastActive: Date;
     lockCount: number;
-    timeLimited: number;
+    timeLimited: boolean;
     allowedFromDate: Date;
     allowedUntilDate: Date;
     allowedWeekdays: number;
     allowedFromTime: number;
     allowedToTime: number;
 
-    constructor(codeId?: number, code?: number, name?: string, dateCreated?: Date, dateLastActive?: Date, lockCount?: number, timeLimited?: number, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number) {
+    constructor(codeId?: number, code?: number, name?: string, enabled?: boolean, dateCreated?: Date, dateLastActive?: Date, lockCount?: number, timeLimited?: boolean, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number) {
         super();
         this.codeId = codeId ?? 0;
         this.code = code ?? 0;
         this.name = name ?? "";
+        this.enabled = enabled ?? false;
         this.dateCreated = dateCreated ?? new Date();
         this.dateLastActive = dateLastActive ?? new Date();
         this.lockCount = lockCount ?? 0;
-        this.timeLimited = timeLimited ?? 0;
+        this.timeLimited = timeLimited ?? false;
         this.allowedFromDate = allowedFromDate ?? new Date();
         this.allowedUntilDate = allowedUntilDate ?? new Date();
         this.allowedWeekdays = allowedWeekdays ?? 0;
@@ -36,7 +38,7 @@ export class KeypadCodeCommand extends Command {
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== 62) {
+        if (buffer.length !== 63) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
@@ -46,13 +48,15 @@ export class KeypadCodeCommand extends Command {
         ofs += 4;
         this.name = readString(buffer, ofs, 20);
         ofs += 20;
+        this.enabled = buffer.readUInt8(ofs) === 1;
+        ofs += 1;
         this.dateCreated = readDateTime(buffer, ofs);
         ofs += 7;
         this.dateLastActive = readDateTime(buffer, ofs);
         ofs += 7;
         this.lockCount = buffer.readUInt16LE(ofs);
         ofs += 2;
-        this.timeLimited = buffer.readUInt8(ofs);
+        this.timeLimited = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.allowedFromDate = readDateTime(buffer, ofs);
         ofs += 7;
@@ -66,7 +70,7 @@ export class KeypadCodeCommand extends Command {
     }
 
     encode(): Buffer {
-        const buffer = Buffer.alloc(62);
+        const buffer = Buffer.alloc(63);
         let ofs = 0;
         buffer.writeUInt16LE(this.codeId, ofs);
         ofs += 2;
@@ -74,13 +78,15 @@ export class KeypadCodeCommand extends Command {
         ofs += 4;
         writeString(buffer, this.name, ofs, 20);
         ofs += 20;
+        buffer.writeUInt8(this.enabled === true ? 1 : 0, ofs);
+        ofs += 1;
         writeDateTime(buffer, this.dateCreated, ofs);
         ofs += 7;
         writeDateTime(buffer, this.dateLastActive, ofs);
         ofs += 7;
         buffer.writeUInt16LE(this.lockCount, ofs);
         ofs += 2;
-        buffer.writeUInt8(this.timeLimited, ofs);
+        buffer.writeUInt8(this.timeLimited === true ? 1 : 0, ofs);
         ofs += 1;
         writeDateTime(buffer, this.allowedFromDate, ofs);
         ofs += 7;
@@ -99,10 +105,11 @@ export class KeypadCodeCommand extends Command {
         str += "\n  codeId: " + "0x" + this.codeId.toString(16).padStart(4, "0");
         str += "\n  code: " + "0x" + this.code.toString(16).padStart(8, "0");
         str += "\n  name: " + this.name;
+        str += "\n  enabled: " + this.enabled;
         str += "\n  dateCreated: " + this.dateCreated.toISOString();
         str += "\n  dateLastActive: " + this.dateLastActive.toISOString();
         str += "\n  lockCount: " + "0x" + this.lockCount.toString(16).padStart(4, "0");
-        str += "\n  timeLimited: " + "0x" + this.timeLimited.toString(16).padStart(2, "0");
+        str += "\n  timeLimited: " + this.timeLimited;
         str += "\n  allowedFromDate: " + this.allowedFromDate.toISOString();
         str += "\n  allowedUntilDate: " + this.allowedUntilDate.toISOString();
         str += "\n  allowedWeekdays: " + "0x" + this.allowedWeekdays.toString(16).padStart(2, "0");

@@ -7,17 +7,17 @@ export class RequestLogEntriesCommand extends CommandNeedsSecurityPin {
     readonly id = CMD_REQUEST_LOG_ENTRIES;
     startIndex: number;
     count: number;
-    sortOrder: number;
-    totalCount: number;
+    sortOrder: boolean;
+    totalCount: boolean;
     nonce: Buffer;
     securityPin: number;
 
-    constructor(startIndex?: number, count?: number, sortOrder?: number, totalCount?: number, nonce?: Buffer, securityPin?: number) {
+    constructor(startIndex?: number, count?: number, sortOrder?: boolean, totalCount?: boolean, nonce?: Buffer, securityPin?: number) {
         super();
         this.startIndex = startIndex ?? 0;
         this.count = count ?? 0;
-        this.sortOrder = sortOrder ?? 0;
-        this.totalCount = totalCount ?? 0;
+        this.sortOrder = sortOrder ?? false;
+        this.totalCount = totalCount ?? false;
         this.nonce = nonce ?? Buffer.alloc(32);
         this.securityPin = securityPin ?? 0;
     }
@@ -31,9 +31,9 @@ export class RequestLogEntriesCommand extends CommandNeedsSecurityPin {
         ofs += 4;
         this.count = buffer.readUInt16LE(ofs);
         ofs += 2;
-        this.sortOrder = buffer.readUInt8(ofs);
+        this.sortOrder = buffer.readUInt8(ofs) === 1;
         ofs += 1;
-        this.totalCount = buffer.readUInt8(ofs);
+        this.totalCount = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.nonce = buffer.slice(ofs, ofs + 32);
         ofs += 32;
@@ -47,9 +47,9 @@ export class RequestLogEntriesCommand extends CommandNeedsSecurityPin {
         ofs += 4;
         buffer.writeUInt16LE(this.count, ofs);
         ofs += 2;
-        buffer.writeUInt8(this.sortOrder, ofs);
+        buffer.writeUInt8(this.sortOrder === true ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.totalCount, ofs);
+        buffer.writeUInt8(this.totalCount === true ? 1 : 0, ofs);
         ofs += 1;
         this.nonce.copy(buffer, ofs);
         ofs += 32;
@@ -61,8 +61,8 @@ export class RequestLogEntriesCommand extends CommandNeedsSecurityPin {
         let str = "RequestLogEntriesCommand {";
         str += "\n  startIndex: " + "0x" + this.startIndex.toString(16).padStart(8, "0");
         str += "\n  count: " + "0x" + this.count.toString(16).padStart(4, "0");
-        str += "\n  sortOrder: " + "0x" + this.sortOrder.toString(16).padStart(2, "0");
-        str += "\n  totalCount: " + "0x" + this.totalCount.toString(16).padStart(2, "0");
+        str += "\n  sortOrder: " + this.sortOrder;
+        str += "\n  totalCount: " + this.totalCount;
         str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
         str += "\n  securityPin: " + "0x" + this.securityPin.toString(16).padStart(4, "0");
         str += "\n}";

@@ -9,7 +9,8 @@ export class UpdateKeypadCodeCommand extends CommandNeedsSecurityPin {
     codeId: number;
     code: number;
     name: string;
-    timeLimited: number;
+    enabled: boolean;
+    timeLimited: boolean;
     allowedFromDate: Date;
     allowedUntilDate: Date;
     allowedWeekdays: number;
@@ -18,12 +19,13 @@ export class UpdateKeypadCodeCommand extends CommandNeedsSecurityPin {
     nonce: Buffer;
     securityPin: number;
 
-    constructor(codeId?: number, code?: number, name?: string, timeLimited?: number, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number, nonce?: Buffer, securityPin?: number) {
+    constructor(codeId?: number, code?: number, name?: string, enabled?: boolean, timeLimited?: boolean, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number, nonce?: Buffer, securityPin?: number) {
         super();
         this.codeId = codeId ?? 0;
         this.code = code ?? 0;
         this.name = name ?? "";
-        this.timeLimited = timeLimited ?? 0;
+        this.enabled = enabled ?? false;
+        this.timeLimited = timeLimited ?? false;
         this.allowedFromDate = allowedFromDate ?? new Date();
         this.allowedUntilDate = allowedUntilDate ?? new Date();
         this.allowedWeekdays = allowedWeekdays ?? 0;
@@ -34,7 +36,7 @@ export class UpdateKeypadCodeCommand extends CommandNeedsSecurityPin {
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== 80) {
+        if (buffer.length !== 81) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
@@ -44,7 +46,9 @@ export class UpdateKeypadCodeCommand extends CommandNeedsSecurityPin {
         ofs += 4;
         this.name = readString(buffer, ofs, 20);
         ofs += 20;
-        this.timeLimited = buffer.readUInt8(ofs);
+        this.enabled = buffer.readUInt8(ofs) === 1;
+        ofs += 1;
+        this.timeLimited = buffer.readUInt8(ofs) === 1;
         ofs += 1;
         this.allowedFromDate = readDateTime(buffer, ofs);
         ofs += 7;
@@ -62,7 +66,7 @@ export class UpdateKeypadCodeCommand extends CommandNeedsSecurityPin {
     }
 
     encode(): Buffer {
-        const buffer = Buffer.alloc(80);
+        const buffer = Buffer.alloc(81);
         let ofs = 0;
         buffer.writeUInt16LE(this.codeId, ofs);
         ofs += 2;
@@ -70,7 +74,9 @@ export class UpdateKeypadCodeCommand extends CommandNeedsSecurityPin {
         ofs += 4;
         writeString(buffer, this.name, ofs, 20);
         ofs += 20;
-        buffer.writeUInt8(this.timeLimited, ofs);
+        buffer.writeUInt8(this.enabled === true ? 1 : 0, ofs);
+        ofs += 1;
+        buffer.writeUInt8(this.timeLimited === true ? 1 : 0, ofs);
         ofs += 1;
         writeDateTime(buffer, this.allowedFromDate, ofs);
         ofs += 7;
@@ -93,7 +99,8 @@ export class UpdateKeypadCodeCommand extends CommandNeedsSecurityPin {
         str += "\n  codeId: " + "0x" + this.codeId.toString(16).padStart(4, "0");
         str += "\n  code: " + "0x" + this.code.toString(16).padStart(8, "0");
         str += "\n  name: " + this.name;
-        str += "\n  timeLimited: " + "0x" + this.timeLimited.toString(16).padStart(2, "0");
+        str += "\n  enabled: " + this.enabled;
+        str += "\n  timeLimited: " + this.timeLimited;
         str += "\n  allowedFromDate: " + this.allowedFromDate.toISOString();
         str += "\n  allowedUntilDate: " + this.allowedUntilDate.toISOString();
         str += "\n  allowedWeekdays: " + "0x" + this.allowedWeekdays.toString(16).padStart(2, "0");

@@ -173,13 +173,13 @@ export class KeyturnerUserSpecificDataIoHandler {
                 now,
                 -now.getTimezoneOffset(),
                 this.config.get("dstMode") ?? 1,
-                1,
+                true,
                 this.config.get("fobAction1") ?? 1, // unlock
                 this.config.get("fobAction2") ?? 2, // lock
                 this.config.get("fobAction3"),
                 this.config.get("singleLock"),
                 this.config.get("advertisingMode"),
-                0,
+                false,
                 FIRMWARE_VERSION,
                 HARDWARE_VERSION,
                 0,
@@ -340,7 +340,8 @@ export class KeyturnerUserSpecificDataIoHandler {
                     user.authorizationId,
                     user.appType,
                     user.name,
-                    1, 1
+                    true,
+                    true
                 ));
             }
             return new StatusCommand(STATUS_COMPLETE);
@@ -359,7 +360,7 @@ export class KeyturnerUserSpecificDataIoHandler {
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof RequestLogEntriesCommand) {
             if (command.totalCount) {
-                await sendCommand(new LogEntryCountCommand(1, 0, 0, 0));
+                await sendCommand(new LogEntryCountCommand(1, 0, false, false));
             }
             // TODO: implement logging
 
@@ -381,7 +382,7 @@ export class KeyturnerUserSpecificDataIoHandler {
             0, // bluetooth
             now,
             -now.getTimezoneOffset(),
-            0,
+            false,
             0,
             0,
             0,

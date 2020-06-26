@@ -37,12 +37,12 @@ securityPin,u,2
 authorizationId,u,4
 idType,u,1
 name,s,32
-enabled,u,1
-remoteAllowed,u,1
+enabled,b
+remoteAllowed,b
 dateCreated,D
 dateLastActive,D
 lockCount,u,2
-timeLimited,u,1
+timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
@@ -52,8 +52,8 @@ allowedToTime,u,2
 name,s,32
 idType,u,1
 sharedKey,B,32
-remoteAllowed,u,1
-timeLimited,u,1
+remoteAllowed,b
+timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
@@ -68,8 +68,8 @@ dateCreated,D
 authorizationId,u,4
 name,s,32
 enabled,u,1
-remoteAllowed,u,1
-timeLimited,u,1
+remoteAllowed,b
+timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
@@ -83,7 +83,7 @@ lockState,u,1
 trigger,u,1
 currentTime,D
 timezoneOffset,i,2
-criticalBatteryState,u,1
+criticalBatteryState,b
 configUpdateCount,u,1
 lockngoTimer,u,1
 lastLockAction,u,1
@@ -108,7 +108,7 @@ closingsSinceBoot,u,2
 !BatteryReport,11
 batteryDrain,u,2
 batteryVoltage,u,2
-criticalBatteryState,u,1
+criticalBatteryState,b
 locakAction,u,1
 startVoltage,u,2
 lowestVoltage,u,2
@@ -123,17 +123,17 @@ commandId,u,2
 name,s,32
 latitude,f,4
 longitude,f,4
-autoUnlatch,u,1
-pairingEnabled,u,1
-buttonEnabled,u,1
-ledEnabled,u,1
+autoUnlatch,b
+pairingEnabled,b
+buttonEnabled,b
+ledEnabled,b
 ledBrightness,u,1
 timezoneOffset,i,2
-dstMode,u,1
+dstMode,b
 fobAction1,u,1
 fobAction2,u,1
 fobAction3,u,1
-singleLock,u,1
+singleLock,b
 advertisingMode,u,1
 timezoneId,u,2
 nonce,B,32
@@ -145,21 +145,21 @@ nukiId,u,4
 name,s,32
 latitude,f,4
 longitude,f,4
-autoUnlatch,u,1
-pairingEnabled,u,1
-buttonEnabled,u,1
-ledEnabled,u,1
+autoUnlatch,b
+pairingEnabled,b
+buttonEnabled,b
+ledEnabled,b
 ledBrightness,u,1
 currentTime,D
 timezoneOffset,i,2
-dstMode,u,1
-hasFob,u,1
+dstMode,b
+hasFob,b
 fobAction1,u,1
 fobAction2,u,1
 fobAction3,u,1
-singleLock,u,1
+singleLock,b
 advertisingMode,u,1
-hasKeypad,u,1
+hasKeypad,b
 firmwareVersion,U,3
 hardwareRevision,u,2
 homekitStatus,u,1
@@ -189,8 +189,8 @@ data,B,5
 !RequestLogEntries,31,CommandNeedsSecurityPin
 startIndex,u,4
 count,u,2
-sortOrder,u,1
-totalCount,u,1
+sortOrder,b
+totalCount,b
 nonce,B,32
 securityPin,u,2
 !LogEntry,32
@@ -203,10 +203,10 @@ data,B,0
 !LogEntryCount,33
 loggingEnabled,u,1
 count,u,2
-doorSensorEnabled,u,1
-doorSensorLoggingEnabled,u,1
+doorSensorEnabled,b
+doorSensorLoggingEnabled,b
 !EnableLogging,34,CommandNeedsSecurityPin
-enabled,u,1
+enabled,b
 nonce,B,32
 securityPin,u,2
 !SetAdvancedConfig,35,CommandNeedsSecurityPin
@@ -217,18 +217,18 @@ unlockedToLockedTransitionOffsetDegrees,i,2
 lockngoTimeout,u,1
 singleButtonPressAction,u,1
 doubleButtonPressAction,u,1
-detachedCylinder,u,1
+detachedCylinder,b
 batteryType,u,1
-automaticBatteryTypeDetection,u,1
+automaticBatteryTypeDetection,b
 unlatchDuration,u,1
 autoLockTimeout,u,2
-autoUnlockDisabled,u,1
-nightmodeEnabled,u,1
+autoUnlockDisabled,b
+nightmodeEnabled,b
 nightmodeStartTime,u,2
 nightmodeEndTime,u,2
-nightmodeAutoLockEnabled,u,1
-nightmodeAutoUnlockDisabled,u,1
-nightmodeImmediateLockOnStart,u,1
+nightmodeAutoLockEnabled,b
+nightmodeAutoUnlockDisabled,b
+nightmodeImmediateLockOnStart,b
 nonce,B,32
 securityPin,u,2
 !RequestAdvancedConfig,36,CommandNeedsChallenge
@@ -242,18 +242,18 @@ unlockedToLockedTransitionOffsetDegrees,i,2
 lockngoTimeout,u,1
 singleButtonPressAction,u,1
 doubleButtonPressAction,u,1
-detachedCylinder,u,1
+detachedCylinder,b
 batteryType,u,1
-automaticBatteryTypeDetection,u,1
+automaticBatteryTypeDetection,b
 unlatchDuration,u,1
 autoLockTimeout,u,2
-autoUnlockDisabled,u,1
-nightmodeEnabled,u,1
+autoUnlockDisabled,b
+nightmodeEnabled,b
 nightmodeStartTime,u,2
 nightmodeEndTime,u,2
-nightmodeAutoLockEnabled,u,1
-nightmodeAutoUnlockDisabled,u,1
-nightmodeImmediateLockOnStart,u,1
+nightmodeAutoLockEnabled,b
+nightmodeAutoUnlockDisabled,b
+nightmodeImmediateLockOnStart,b
 !AddTimeControlEntry,39,CommandNeedsSecurityPin
 weekdays,u,1
 time,u,2
@@ -273,13 +273,13 @@ securityPin,u,2
 count,u,1
 !TimeControlEntry,3e
 entryId,u,1
-enabled,u,1
+enabled,b
 weekdays,u,1
 time,u,2
 lockAction,u,1
 !UpdateTimeControlEntry,3f,CommandNeedsSecurityPin
 entryId,u,1
-enabled,u,1
+enabled,b
 weekdays,u,1
 time,u,2
 lockAction,u,1
@@ -288,7 +288,7 @@ securityPin,u,2
 !AddKeypadCode,41,CommandNeedsSecurityPin
 code,u,4
 name,s,20
-timeLimited,u,1
+timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
@@ -310,10 +310,11 @@ count,u,2
 codeId,u,2
 code,u,4
 name,s,20
+enabled,b
 dateCreated,D
 dateLastActive,D
 lockCount,u,2
-timeLimited,u,1
+timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
@@ -323,7 +324,8 @@ allowedToTime,u,2
 codeId,u,2
 code,u,4
 name,s,20
-timeLimited,u,1
+enabled,b
+timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
@@ -542,6 +544,13 @@ function getPropInfo(prop: string[]) {
     let enc: string;
     let str = `this.${name}`;
     switch (t) {
+        case "b":
+            bytes = 1;
+            type = "boolean";
+            init = "false";
+            dec = "buffer.readUInt8(ofs) === 1";
+            enc = `buffer.writeUInt8(this.${name} === true ? 1 : 0, ofs)`;
+            break;
         case "B":
             type = "Buffer";
             init = `Buffer.alloc(${bytes})`;

@@ -40,7 +40,7 @@ export class LockActionCommand extends CommandNeedsChallenge {
     }
 
     encode(): Buffer {
-        const buffer = Buffer.alloc(58);
+        const buffer = Buffer.alloc(this.nameSuffix ? 58 : 38);
         let ofs = 0;
         buffer.writeUInt8(this.lockAction, ofs);
         ofs += 1;
