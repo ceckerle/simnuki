@@ -1,11 +1,9 @@
-import {DataIoCharacteristic} from "./DataIoCharacteristic";
 import {Configuration} from "./Configuration";
 import {computeAuthenticator, deriveSharedSecret, generateKeyPair, random} from "./Crypto";
 import {
     NUKI_NONCEBYTES,
     NUKI_STATE_PAIRING_MODE,
-    NUKI_STATE_UNINITIALIZED,
-    PAIRING_GDIO_CHARACTERISTIC_UUID
+    NUKI_STATE_UNINITIALIZED
 } from "./Protocol";
 import {decodeCommand, encodeCommand} from "./command/Codec";
 import {Command} from "./command/Command";
@@ -58,7 +56,7 @@ interface PairingStateAuthorizationIdSent {
     challenge: Buffer;
 }
 
-export class PairingCharacteristic extends DataIoCharacteristic {
+export class PairingGeneralDataIoHandler {
 
     private state: PairingState = {
         key: "Initial"
@@ -68,13 +66,18 @@ export class PairingCharacteristic extends DataIoCharacteristic {
     private serverPublicKey: Buffer;
 
     constructor(private config: Configuration) {
-        super(PAIRING_GDIO_CHARACTERISTIC_UUID);
         const key = generateKeyPair();
         this.serverPrivateKey = key.privateKey;
         this.serverPublicKey = key.publicKey;
     }
 
-    async handleRequest(data: Buffer): Promise<Buffer> {
+    reset(): void {
+        this.state = {
+            key: "Initial"
+        }
+    }
+
+    async handleRequest (data: Buffer): Promise<Buffer> {
         try {
             const command = decodeCommand(data);
             console.log("received " + command.toString());

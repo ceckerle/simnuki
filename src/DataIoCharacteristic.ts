@@ -1,8 +1,8 @@
 import * as bleno from "@abandonware/bleno"
-import {CMD_ERROR} from "./command/Constants";
-import {setCrc} from "./command/Util";
 
-export abstract class DataIoCharacteristic extends bleno.Characteristic {
+export type DataIoCharacteristicHandler = (data: Buffer, sendAsync: (data: Buffer) => Promise<void>) => Promise<Buffer>;
+
+export class DataIoCharacteristic extends bleno.Characteristic {
 
     private pendingIndicationPromise: Promise<void> = Promise.resolve();
     private pendingIndicationPromiseResolve: () => void = () => undefined;
@@ -11,7 +11,7 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
     private subscriptionCallback?: (data: Buffer) => void;
     private subscriptionLimit = 0;
 
-    constructor(uuid: string) {
+    constructor(uuid: string, private handler: DataIoCharacteristicHandler) {
         super({
             uuid,
             properties: ['read', 'write', 'indicate'],
@@ -30,7 +30,7 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
             callback(this.RESULT_ATTR_NOT_LONG);
         } else {
             callback(this.RESULT_SUCCESS);
-            this.handleRequest(data).then((data) => {
+            this.handler(data, this.sendIndication).then((data) => {
                 // console.log("will send " + data.toString("hex"));
                 this.sendIndication(data);
             }, (error) => {
@@ -55,9 +55,7 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
         }, 0);
     }
 
-    protected abstract handleRequest(data: Buffer): Promise<Buffer>;
-
-    protected async sendIndication(data: Buffer): Promise<void> {
+    protected sendIndication = async (data: Buffer): Promise<void> => {
         return new Promise((resolve) => {
             this.pendingIndicationPromise.finally(() => {
                 this.pendingIndicationPromiseResolve = resolve;
@@ -66,22 +64,6 @@ export abstract class DataIoCharacteristic extends bleno.Characteristic {
                 this.processPendingIndication();
             })
         });
-    }
-
-    protected buildError(code: number, cmd: number, info: string): Buffer {
-        console.log(info);
-        const buf = Buffer.alloc(3);
-        buf.writeUInt8(code, 0)
-        buf.writeUInt16LE(cmd, 1);
-        return this.buildMessage(CMD_ERROR, buf);
-    }
-
-    protected buildMessage(cmd: number, payload: Buffer): Buffer {
-        const cmdBuffer = Buffer.alloc(2);
-        cmdBuffer.writeUInt16LE(cmd, 0);
-        const responseData = Buffer.concat([cmdBuffer, payload, Buffer.alloc(2)]);
-        setCrc(responseData);
-        return responseData;
     }
 
     private processPendingIndication() {
