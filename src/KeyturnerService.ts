@@ -16,7 +16,7 @@ export class KeyturnerService extends bleno.PrimaryService {
                 new DataIoCharacteristic(KEYTURNER_USDIO_CHARACTERISTIC_UUID, usdioHandler),
                 new bleno.Characteristic({
                     uuid: KEYTURNER_THRID_CHARACTERISTIC_UUID,
-                    properties: ["write"]
+                    properties: ["writeWithoutResponse"]
                 })
             ]
         });

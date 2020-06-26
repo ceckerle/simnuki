@@ -1,6 +1,8 @@
 import * as bleno from "@abandonware/bleno";
 import {
-    INITIALIZATION_SERVICE_UUID, KEYTURNER_SERVICE_UUID, NUKI_STATE_DOOR_MODE,
+    INITIALIZATION_SERVICE_UUID,
+    KEYTURNER_SERVICE_UUID,
+    NUKI_STATE_DOOR_MODE,
     NUKI_STATE_PAIRING_MODE,
     NUKI_STATE_UNINITIALIZED,
     PAIRING_SERVICE_UUID
@@ -60,9 +62,6 @@ export class Advertiser {
             // data type 0x01 means flags (LE General Discoverable Mode, BR/EDR Not Supported (i.e. bit 37 of LMP Extended Feature bits Page 0)
             const preBuf = new Buffer("020106", 'hex');
 
-            // data type 0x21 means "Service Data - 128-bit UUID"
-            const typeBuf = new Buffer([0x21]);
-
             let uuid;
             switch (this.config.getNukiState()) {
                 case NUKI_STATE_UNINITIALIZED:
@@ -76,16 +75,14 @@ export class Advertiser {
                     uuid = KEYTURNER_SERVICE_UUID;
                     break;
             }
-            const uuidBuf = new Buffer(uuid.replace(/-/g, ""), 'hex').reverse();
+            const uuidBuf = new Buffer(uuid.replace(/-/g, ""), 'hex');
 
             const nukiIdBuf = Buffer.alloc(4);
             nukiIdBuf.writeUInt32BE(parseInt(this.config.getNukiIdStr(), 16), 0);
 
-            const advDataBuf = Buffer.concat([typeBuf, uuidBuf, nukiIdBuf]);
-            const len = advDataBuf.length;
-            const lenBuf = Buffer.alloc(1);
-            lenBuf.writeUInt8(len, 0);
-            const advBuf = Buffer.concat([preBuf, lenBuf, advDataBuf]);
+            const advBuf = Buffer.concat([preBuf, this.config.getNukiState() === NUKI_STATE_DOOR_MODE ?
+                this.buildBeaconAdvertising(uuidBuf, nukiIdBuf) :
+                this.buildServiceDataAdvertising(uuidBuf, nukiIdBuf)]);
 
             const completeLocalName = 'Nuki_' + this.config.getNukiIdStr();
             const completeLocalNameBuf = new Buffer(completeLocalName, 'ascii');
@@ -93,6 +90,7 @@ export class Advertiser {
             localNamePrefixBuf.writeUInt8(completeLocalNameBuf.length + 1, 0);
             localNamePrefixBuf.writeUInt8(0x09, 1); // data type 0x09 means "Complete Local Name"
             const scanDataBuf = Buffer.concat([localNamePrefixBuf, completeLocalNameBuf]);
+
             console.log("Advertising with ", advBuf.toString("hex"));
             console.log("Scan data ", scanDataBuf.toString("hex"));
             bleno.startAdvertisingWithEIRData(advBuf, scanDataBuf, (err) => {
@@ -103,6 +101,24 @@ export class Advertiser {
         } else {
             bleno.stopAdvertising();
         }
+    }
+
+    private buildServiceDataAdvertising(uuid: Buffer, nukiId: Buffer): Buffer {
+        // data type 0x21 means "Service Data - 128-bit UUID"
+        const typeBuf = new Buffer([0x21]);
+        const advDataBuf = Buffer.concat([typeBuf, uuid.reverse(), nukiId]);
+        const len = advDataBuf.length;
+        const lenBuf = Buffer.alloc(1);
+        lenBuf.writeUInt8(len, 0);
+        return Buffer.concat([lenBuf, advDataBuf]);
+    }
+
+    private buildBeaconAdvertising(uuid: Buffer, nukiId: Buffer): Buffer {
+        // manufacturer specific data field with apple ibeacon header
+        const headerBuf = new Buffer("1aff4c000215", "hex");
+        // signal strength
+        const sigStrBuf = new Buffer("c4", "hex");
+        return Buffer.concat([headerBuf, uuid, nukiId, sigStrBuf]);
     }
 
     private onStateChange = (state: string) => {
