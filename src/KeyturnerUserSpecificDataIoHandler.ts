@@ -53,6 +53,8 @@ import {UpdateAuthorizationEntryCommand} from "./command/UpdateAuthorizationEntr
 import {RequestLogEntriesCommand} from "./command/RequestLogEntriesCommand";
 import {LogEntryCountCommand} from "./command/LogEntryCountCommand";
 import {EnableLoggingCommand} from "./command/EnableLoggingCommand";
+import {AuthorizationDataInviteCommand} from "./command/AuthorizationDataInviteCommand";
+import {AuthorizationIdInviteCommand} from "./command/AuthorizationIdInviteCommand";
 
 interface KeyturnerStateInitial {
     key: "Initial"
@@ -358,6 +360,18 @@ export class KeyturnerUserSpecificDataIoHandler {
             await this.config.save();
 
             return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof AuthorizationDataInviteCommand) {
+            const authorizationId = this.config.getNextAuthorizationId();
+            this.config.addOrReplaceUser({
+                authorizationId: authorizationId,
+                appId: 0,
+                appType: command.idType,
+                name: command.name,
+                sharedSecret: command.sharedKey.toString("hex")
+            });
+            await this.config.save();
+
+            return new AuthorizationIdInviteCommand(authorizationId, new Date());
         } else if (command instanceof RequestLogEntriesCommand) {
             if (command.totalCount) {
                 await sendCommand(new LogEntryCountCommand(1, 0, false, false));
