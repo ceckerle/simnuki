@@ -55,6 +55,7 @@ import {LogEntryCountCommand} from "./command/LogEntryCountCommand";
 import {EnableLoggingCommand} from "./command/EnableLoggingCommand";
 import {AuthorizationDataInviteCommand} from "./command/AuthorizationDataInviteCommand";
 import {AuthorizationIdInviteCommand} from "./command/AuthorizationIdInviteCommand";
+import {DateTime} from "./command/DateTime";
 
 interface KeyturnerStateInitial {
     key: "Initial"
@@ -172,7 +173,7 @@ export class KeyturnerUserSpecificDataIoHandler {
                 this.config.get("buttonEnabled") ?? 1,
                 this.config.get("ledFlashEnabled") ?? 1,
                 this.config.get("ledBrightness") ?? 1,
-                now,
+                DateTime.fromDate(now),
                 -now.getTimezoneOffset(),
                 this.config.get("dstMode") ?? 1,
                 true,
@@ -371,7 +372,7 @@ export class KeyturnerUserSpecificDataIoHandler {
             });
             await this.config.save();
 
-            return new AuthorizationIdInviteCommand(authorizationId, new Date());
+            return new AuthorizationIdInviteCommand(authorizationId, DateTime.fromDate(new Date()));
         } else if (command instanceof RequestLogEntriesCommand) {
             if (command.totalCount) {
                 await sendCommand(new LogEntryCountCommand(1, 0, false, false));
@@ -394,7 +395,7 @@ export class KeyturnerUserSpecificDataIoHandler {
             this.config.getNukiState(),
             this.config.getLockState(),
             0, // bluetooth
-            now,
+            DateTime.fromDate(now),
             -now.getTimezoneOffset(),
             false,
             0,

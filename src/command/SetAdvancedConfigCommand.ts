@@ -1,6 +1,7 @@
 import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_SET_ADVANCED_CONFIG, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
+import {Time} from "./Time";
 
 export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
     
@@ -19,15 +20,15 @@ export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
     autoLockTimeout: number;
     autoUnlockDisabled: boolean;
     nightmodeEnabled: boolean;
-    nightmodeStartTime: number;
-    nightmodeEndTime: number;
+    nightmodeStartTime: Time;
+    nightmodeEndTime: Time;
     nightmodeAutoLockEnabled: boolean;
     nightmodeAutoUnlockDisabled: boolean;
     nightmodeImmediateLockOnStart: boolean;
     nonce: Buffer;
     securityPin: number;
 
-    constructor(unlockedPositionOffsetDegrees?: number, lockedPositionOffsetDegrees?: number, singleLockedPositionOffsetDegrees?: number, unlockedToLockedTransitionOffsetDegrees?: number, lockngoTimeout?: number, singleButtonPressAction?: number, doubleButtonPressAction?: number, detachedCylinder?: boolean, batteryType?: number, automaticBatteryTypeDetection?: boolean, unlatchDuration?: number, autoLockTimeout?: number, autoUnlockDisabled?: boolean, nightmodeEnabled?: boolean, nightmodeStartTime?: number, nightmodeEndTime?: number, nightmodeAutoLockEnabled?: boolean, nightmodeAutoUnlockDisabled?: boolean, nightmodeImmediateLockOnStart?: boolean, nonce?: Buffer, securityPin?: number) {
+    constructor(unlockedPositionOffsetDegrees?: number, lockedPositionOffsetDegrees?: number, singleLockedPositionOffsetDegrees?: number, unlockedToLockedTransitionOffsetDegrees?: number, lockngoTimeout?: number, singleButtonPressAction?: number, doubleButtonPressAction?: number, detachedCylinder?: boolean, batteryType?: number, automaticBatteryTypeDetection?: boolean, unlatchDuration?: number, autoLockTimeout?: number, autoUnlockDisabled?: boolean, nightmodeEnabled?: boolean, nightmodeStartTime?: Time, nightmodeEndTime?: Time, nightmodeAutoLockEnabled?: boolean, nightmodeAutoUnlockDisabled?: boolean, nightmodeImmediateLockOnStart?: boolean, nonce?: Buffer, securityPin?: number) {
         super();
         this.unlockedPositionOffsetDegrees = unlockedPositionOffsetDegrees ?? 0;
         this.lockedPositionOffsetDegrees = lockedPositionOffsetDegrees ?? 0;
@@ -43,8 +44,8 @@ export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
         this.autoLockTimeout = autoLockTimeout ?? 0;
         this.autoUnlockDisabled = autoUnlockDisabled ?? false;
         this.nightmodeEnabled = nightmodeEnabled ?? false;
-        this.nightmodeStartTime = nightmodeStartTime ?? 0;
-        this.nightmodeEndTime = nightmodeEndTime ?? 0;
+        this.nightmodeStartTime = nightmodeStartTime ?? new Time(0, 0);
+        this.nightmodeEndTime = nightmodeEndTime ?? new Time(0, 0);
         this.nightmodeAutoLockEnabled = nightmodeAutoLockEnabled ?? false;
         this.nightmodeAutoUnlockDisabled = nightmodeAutoUnlockDisabled ?? false;
         this.nightmodeImmediateLockOnStart = nightmodeImmediateLockOnStart ?? false;
@@ -85,9 +86,9 @@ export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
         ofs += 1;
         this.nightmodeEnabled = buffer.readUInt8(ofs) === 1;
         ofs += 1;
-        this.nightmodeStartTime = buffer.readUInt16LE(ofs);
+        this.nightmodeStartTime = Time.decode(buffer, ofs);
         ofs += 2;
-        this.nightmodeEndTime = buffer.readUInt16LE(ofs);
+        this.nightmodeEndTime = Time.decode(buffer, ofs);
         ofs += 2;
         this.nightmodeAutoLockEnabled = buffer.readUInt8(ofs) === 1;
         ofs += 1;
@@ -131,9 +132,9 @@ export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
         ofs += 1;
         buffer.writeUInt8(this.nightmodeEnabled === true ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt16LE(this.nightmodeStartTime, ofs);
+        this.nightmodeStartTime.encode(buffer, ofs);
         ofs += 2;
-        buffer.writeUInt16LE(this.nightmodeEndTime, ofs);
+        this.nightmodeEndTime.encode(buffer, ofs);
         ofs += 2;
         buffer.writeUInt8(this.nightmodeAutoLockEnabled === true ? 1 : 0, ofs);
         ofs += 1;
@@ -163,8 +164,8 @@ export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
         str += "\n  autoLockTimeout: " + "0x" + this.autoLockTimeout.toString(16).padStart(4, "0");
         str += "\n  autoUnlockDisabled: " + this.autoUnlockDisabled;
         str += "\n  nightmodeEnabled: " + this.nightmodeEnabled;
-        str += "\n  nightmodeStartTime: " + "0x" + this.nightmodeStartTime.toString(16).padStart(4, "0");
-        str += "\n  nightmodeEndTime: " + "0x" + this.nightmodeEndTime.toString(16).padStart(4, "0");
+        str += "\n  nightmodeStartTime: " + this.nightmodeStartTime.toString();
+        str += "\n  nightmodeEndTime: " + this.nightmodeEndTime.toString();
         str += "\n  nightmodeAutoLockEnabled: " + this.nightmodeAutoLockEnabled;
         str += "\n  nightmodeAutoUnlockDisabled: " + this.nightmodeAutoUnlockDisabled;
         str += "\n  nightmodeImmediateLockOnStart: " + this.nightmodeImmediateLockOnStart;

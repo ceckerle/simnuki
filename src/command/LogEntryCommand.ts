@@ -1,22 +1,23 @@
 import {Command} from "./Command";
 import {CMD_LOG_ENTRY, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
-import {readString, writeString, readDateTime, writeDateTime} from "./Util";
+import {readString, writeString} from "./Util";
+import {DateTime} from "./DateTime";
 
 export class LogEntryCommand extends Command {
     
     readonly id = CMD_LOG_ENTRY;
     index: number;
-    timestamp: Date;
+    timestamp: DateTime;
     authorizationId: number;
     name: string;
     type: number;
     data: Buffer;
 
-    constructor(index?: number, timestamp?: Date, authorizationId?: number, name?: string, type?: number, data?: Buffer) {
+    constructor(index?: number, timestamp?: DateTime, authorizationId?: number, name?: string, type?: number, data?: Buffer) {
         super();
         this.index = index ?? 0;
-        this.timestamp = timestamp ?? new Date();
+        this.timestamp = timestamp ?? new DateTime(0, 0, 0, 0, 0, 0);
         this.authorizationId = authorizationId ?? 0;
         this.name = name ?? "";
         this.type = type ?? 0;
@@ -30,7 +31,7 @@ export class LogEntryCommand extends Command {
         let ofs = 0;
         this.index = buffer.readUInt32LE(ofs);
         ofs += 4;
-        this.timestamp = readDateTime(buffer, ofs);
+        this.timestamp = DateTime.decode(buffer, ofs);
         ofs += 7;
         this.authorizationId = buffer.readUInt32LE(ofs);
         ofs += 4;
@@ -46,7 +47,7 @@ export class LogEntryCommand extends Command {
         let ofs = 0;
         buffer.writeUInt32LE(this.index, ofs);
         ofs += 4;
-        writeDateTime(buffer, this.timestamp, ofs);
+        this.timestamp.encode(buffer, ofs);
         ofs += 7;
         buffer.writeUInt32LE(this.authorizationId, ofs);
         ofs += 4;
@@ -61,7 +62,7 @@ export class LogEntryCommand extends Command {
     toString(): string {
         let str = "LogEntryCommand {";
         str += "\n  index: " + "0x" + this.index.toString(16).padStart(8, "0");
-        str += "\n  timestamp: " + this.timestamp.toISOString();
+        str += "\n  timestamp: " + this.timestamp.toString();
         str += "\n  authorizationId: " + "0x" + this.authorizationId.toString(16).padStart(8, "0");
         str += "\n  name: " + this.name;
         str += "\n  type: " + "0x" + this.type.toString(16).padStart(2, "0");

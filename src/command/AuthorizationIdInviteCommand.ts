@@ -1,18 +1,18 @@
 import {Command} from "./Command";
 import {CMD_AUTHORIZATION_ID_INVITE, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
-import {readDateTime, writeDateTime} from "./Util";
+import {DateTime} from "./DateTime";
 
 export class AuthorizationIdInviteCommand extends Command {
     
     readonly id = CMD_AUTHORIZATION_ID_INVITE;
     authorizationId: number;
-    dateCreated: Date;
+    dateCreated: DateTime;
 
-    constructor(authorizationId?: number, dateCreated?: Date) {
+    constructor(authorizationId?: number, dateCreated?: DateTime) {
         super();
         this.authorizationId = authorizationId ?? 0;
-        this.dateCreated = dateCreated ?? new Date();
+        this.dateCreated = dateCreated ?? new DateTime(0, 0, 0, 0, 0, 0);
     }
     
     decode(buffer: Buffer): void {
@@ -22,7 +22,7 @@ export class AuthorizationIdInviteCommand extends Command {
         let ofs = 0;
         this.authorizationId = buffer.readUInt32LE(ofs);
         ofs += 4;
-        this.dateCreated = readDateTime(buffer, ofs);
+        this.dateCreated = DateTime.decode(buffer, ofs);
     }
 
     encode(): Buffer {
@@ -30,14 +30,14 @@ export class AuthorizationIdInviteCommand extends Command {
         let ofs = 0;
         buffer.writeUInt32LE(this.authorizationId, ofs);
         ofs += 4;
-        writeDateTime(buffer, this.dateCreated, ofs);
+        this.dateCreated.encode(buffer, ofs);
         return buffer;
     }
     
     toString(): string {
         let str = "AuthorizationIdInviteCommand {";
         str += "\n  authorizationId: " + "0x" + this.authorizationId.toString(16).padStart(8, "0");
-        str += "\n  dateCreated: " + this.dateCreated.toISOString();
+        str += "\n  dateCreated: " + this.dateCreated.toString();
         str += "\n}";
         return str;
     }

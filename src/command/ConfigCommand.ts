@@ -1,7 +1,8 @@
 import {Command} from "./Command";
 import {CMD_CONFIG, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
-import {readString, writeString, readDateTime, writeDateTime, readUInt24BE, writeUInt24BE} from "./Util";
+import {readString, writeString, readUInt24BE, writeUInt24BE} from "./Util";
+import {DateTime} from "./DateTime";
 
 export class ConfigCommand extends Command {
     
@@ -15,7 +16,7 @@ export class ConfigCommand extends Command {
     buttonEnabled: boolean;
     ledEnabled: boolean;
     ledBrightness: number;
-    currentTime: Date;
+    currentTime: DateTime;
     timezoneOffset: number;
     dstMode: boolean;
     hasFob: boolean;
@@ -30,7 +31,7 @@ export class ConfigCommand extends Command {
     homekitStatus: number;
     timezoneId: number;
 
-    constructor(nukiId?: number, name?: string, latitude?: number, longitude?: number, autoUnlatch?: boolean, pairingEnabled?: boolean, buttonEnabled?: boolean, ledEnabled?: boolean, ledBrightness?: number, currentTime?: Date, timezoneOffset?: number, dstMode?: boolean, hasFob?: boolean, fobAction1?: number, fobAction2?: number, fobAction3?: number, singleLock?: boolean, advertisingMode?: number, hasKeypad?: boolean, firmwareVersion?: number, hardwareRevision?: number, homekitStatus?: number, timezoneId?: number) {
+    constructor(nukiId?: number, name?: string, latitude?: number, longitude?: number, autoUnlatch?: boolean, pairingEnabled?: boolean, buttonEnabled?: boolean, ledEnabled?: boolean, ledBrightness?: number, currentTime?: DateTime, timezoneOffset?: number, dstMode?: boolean, hasFob?: boolean, fobAction1?: number, fobAction2?: number, fobAction3?: number, singleLock?: boolean, advertisingMode?: number, hasKeypad?: boolean, firmwareVersion?: number, hardwareRevision?: number, homekitStatus?: number, timezoneId?: number) {
         super();
         this.nukiId = nukiId ?? 0;
         this.name = name ?? "";
@@ -41,7 +42,7 @@ export class ConfigCommand extends Command {
         this.buttonEnabled = buttonEnabled ?? false;
         this.ledEnabled = ledEnabled ?? false;
         this.ledBrightness = ledBrightness ?? 0;
-        this.currentTime = currentTime ?? new Date();
+        this.currentTime = currentTime ?? new DateTime(0, 0, 0, 0, 0, 0);
         this.timezoneOffset = timezoneOffset ?? 0;
         this.dstMode = dstMode ?? false;
         this.hasFob = hasFob ?? false;
@@ -80,7 +81,7 @@ export class ConfigCommand extends Command {
         ofs += 1;
         this.ledBrightness = buffer.readUInt8(ofs);
         ofs += 1;
-        this.currentTime = readDateTime(buffer, ofs);
+        this.currentTime = DateTime.decode(buffer, ofs);
         ofs += 7;
         this.timezoneOffset = buffer.readInt16LE(ofs);
         ofs += 2;
@@ -131,7 +132,7 @@ export class ConfigCommand extends Command {
         ofs += 1;
         buffer.writeUInt8(this.ledBrightness, ofs);
         ofs += 1;
-        writeDateTime(buffer, this.currentTime, ofs);
+        this.currentTime.encode(buffer, ofs);
         ofs += 7;
         buffer.writeInt16LE(this.timezoneOffset, ofs);
         ofs += 2;
@@ -173,7 +174,7 @@ export class ConfigCommand extends Command {
         str += "\n  buttonEnabled: " + this.buttonEnabled;
         str += "\n  ledEnabled: " + this.ledEnabled;
         str += "\n  ledBrightness: " + "0x" + this.ledBrightness.toString(16).padStart(2, "0");
-        str += "\n  currentTime: " + this.currentTime.toISOString();
+        str += "\n  currentTime: " + this.currentTime.toString();
         str += "\n  timezoneOffset: " + "0x" + this.timezoneOffset.toString(16).padStart(4, "0");
         str += "\n  dstMode: " + this.dstMode;
         str += "\n  hasFob: " + this.hasFob;

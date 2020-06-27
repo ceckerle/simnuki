@@ -1,6 +1,7 @@
 import {Command} from "./Command";
 import {CMD_TIME_CONTROL_ENTRY, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
+import {Time} from "./Time";
 
 export class TimeControlEntryCommand extends Command {
     
@@ -8,15 +9,15 @@ export class TimeControlEntryCommand extends Command {
     entryId: number;
     enabled: boolean;
     weekdays: number;
-    time: number;
+    time: Time;
     lockAction: number;
 
-    constructor(entryId?: number, enabled?: boolean, weekdays?: number, time?: number, lockAction?: number) {
+    constructor(entryId?: number, enabled?: boolean, weekdays?: number, time?: Time, lockAction?: number) {
         super();
         this.entryId = entryId ?? 0;
         this.enabled = enabled ?? false;
         this.weekdays = weekdays ?? 0;
-        this.time = time ?? 0;
+        this.time = time ?? new Time(0, 0);
         this.lockAction = lockAction ?? 0;
     }
     
@@ -31,7 +32,7 @@ export class TimeControlEntryCommand extends Command {
         ofs += 1;
         this.weekdays = buffer.readUInt8(ofs);
         ofs += 1;
-        this.time = buffer.readUInt16LE(ofs);
+        this.time = Time.decode(buffer, ofs);
         ofs += 2;
         this.lockAction = buffer.readUInt8(ofs);
     }
@@ -45,7 +46,7 @@ export class TimeControlEntryCommand extends Command {
         ofs += 1;
         buffer.writeUInt8(this.weekdays, ofs);
         ofs += 1;
-        buffer.writeUInt16LE(this.time, ofs);
+        this.time.encode(buffer, ofs);
         ofs += 2;
         buffer.writeUInt8(this.lockAction, ofs);
         return buffer;
@@ -56,7 +57,7 @@ export class TimeControlEntryCommand extends Command {
         str += "\n  entryId: " + "0x" + this.entryId.toString(16).padStart(2, "0");
         str += "\n  enabled: " + this.enabled;
         str += "\n  weekdays: " + "0x" + this.weekdays.toString(16).padStart(2, "0");
-        str += "\n  time: " + "0x" + this.time.toString(16).padStart(4, "0");
+        str += "\n  time: " + this.time.toString();
         str += "\n  lockAction: " + "0x" + this.lockAction.toString(16).padStart(2, "0");
         str += "\n}";
         return str;

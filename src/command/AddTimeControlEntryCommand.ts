@@ -1,20 +1,21 @@
 import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_ADD_TIME_CONTROL_ENTRY, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
+import {Time} from "./Time";
 
 export class AddTimeControlEntryCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_ADD_TIME_CONTROL_ENTRY;
     weekdays: number;
-    time: number;
+    time: Time;
     lockAction: number;
     nonce: Buffer;
     securityPin: number;
 
-    constructor(weekdays?: number, time?: number, lockAction?: number, nonce?: Buffer, securityPin?: number) {
+    constructor(weekdays?: number, time?: Time, lockAction?: number, nonce?: Buffer, securityPin?: number) {
         super();
         this.weekdays = weekdays ?? 0;
-        this.time = time ?? 0;
+        this.time = time ?? new Time(0, 0);
         this.lockAction = lockAction ?? 0;
         this.nonce = nonce ?? Buffer.alloc(32);
         this.securityPin = securityPin ?? 0;
@@ -27,7 +28,7 @@ export class AddTimeControlEntryCommand extends CommandNeedsSecurityPin {
         let ofs = 0;
         this.weekdays = buffer.readUInt8(ofs);
         ofs += 1;
-        this.time = buffer.readUInt16LE(ofs);
+        this.time = Time.decode(buffer, ofs);
         ofs += 2;
         this.lockAction = buffer.readUInt8(ofs);
         ofs += 1;
@@ -41,7 +42,7 @@ export class AddTimeControlEntryCommand extends CommandNeedsSecurityPin {
         let ofs = 0;
         buffer.writeUInt8(this.weekdays, ofs);
         ofs += 1;
-        buffer.writeUInt16LE(this.time, ofs);
+        this.time.encode(buffer, ofs);
         ofs += 2;
         buffer.writeUInt8(this.lockAction, ofs);
         ofs += 1;
@@ -54,7 +55,7 @@ export class AddTimeControlEntryCommand extends CommandNeedsSecurityPin {
     toString(): string {
         let str = "AddTimeControlEntryCommand {";
         str += "\n  weekdays: " + "0x" + this.weekdays.toString(16).padStart(2, "0");
-        str += "\n  time: " + "0x" + this.time.toString(16).padStart(4, "0");
+        str += "\n  time: " + this.time.toString();
         str += "\n  lockAction: " + "0x" + this.lockAction.toString(16).padStart(2, "0");
         str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
         str += "\n  securityPin: " + "0x" + this.securityPin.toString(16).padStart(4, "0");

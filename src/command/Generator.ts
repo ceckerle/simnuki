@@ -46,8 +46,8 @@ timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
-allowedFromTime,u,2
-allowedToTime,u,2
+allowedFromTime,T
+allowedToTime,T
 !AuthorizationDataInvite,b,CommandNeedsSecurityPin
 name,s,32
 idType,u,1
@@ -57,8 +57,8 @@ timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
-allowedFromTime,u,2
-allowedToTime,u,2
+allowedFromTime,T
+allowedToTime,T
 nonce,B,32
 securityPin,u,2
 !AuthorizationIdInvite,1f
@@ -73,8 +73,8 @@ timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
-allowedFromTime,u,2
-allowedToTime,u,2
+allowedFromTime,T
+allowedToTime,T
 nonce,B,32
 securityPin,u,2
 !KeyturnerStates,c
@@ -224,8 +224,8 @@ unlatchDuration,u,1
 autoLockTimeout,u,2
 autoUnlockDisabled,b
 nightmodeEnabled,b
-nightmodeStartTime,u,2
-nightmodeEndTime,u,2
+nightmodeStartTime,T
+nightmodeEndTime,T
 nightmodeAutoLockEnabled,b
 nightmodeAutoUnlockDisabled,b
 nightmodeImmediateLockOnStart,b
@@ -249,14 +249,14 @@ unlatchDuration,u,1
 autoLockTimeout,u,2
 autoUnlockDisabled,b
 nightmodeEnabled,b
-nightmodeStartTime,u,2
-nightmodeEndTime,u,2
+nightmodeStartTime,T
+nightmodeEndTime,T
 nightmodeAutoLockEnabled,b
 nightmodeAutoUnlockDisabled,b
 nightmodeImmediateLockOnStart,b
 !AddTimeControlEntry,39,CommandNeedsSecurityPin
 weekdays,u,1
-time,u,2
+time,T
 lockAction,u,1
 nonce,B,32
 securityPin,u,2
@@ -275,13 +275,13 @@ count,u,1
 entryId,u,1
 enabled,b
 weekdays,u,1
-time,u,2
+time,T
 lockAction,u,1
 !UpdateTimeControlEntry,3f,CommandNeedsSecurityPin
 entryId,u,1
 enabled,b
 weekdays,u,1
-time,u,2
+time,T
 lockAction,u,1
 nonce,B,32
 securityPin,u,2
@@ -292,8 +292,8 @@ timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
-allowedFromTime,u,2
-allowedToTime,u,2
+allowedFromTime,T
+allowedToTime,T
 nonce,B,32
 securityPin,u,2
 !KeypadCodeId,42
@@ -318,8 +318,8 @@ timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
-allowedFromTime,u,2
-allowedToTime,u,2
+allowedFromTime,T
+allowedToTime,T
 !UpdateKeypadCode,46,CommandNeedsSecurityPin
 codeId,u,2
 code,u,4
@@ -329,8 +329,8 @@ timeLimited,b
 allowedFromDate,D
 allowedUntilDate,D
 allowedWeekdays,u,1
-allowedFromTime,u,2
-allowedToTime,u,2
+allowedFromTime,T
+allowedToTime,T
 nonce,B,32
 securityPin,u,2
 !RemveKeypadCode,47,CommandNeedsSecurityPin
@@ -464,6 +464,12 @@ ${props.map((p) =>
             "./DecodingError": ["DecodingError"],
             "./Util": usedUtilFunctions
         };
+        if (props.find((p) => p.type === "DateTime")) {
+            imports["./DateTime"] = ["DateTime"];
+        }
+        if (props.find((p) => p.type === "Time")) {
+            imports["./Time"] = ["Time"];
+        }
         const importStr = Object.getOwnPropertyNames(imports)
             .map((m) => [m, imports[m]] as [string, string[]])
             .filter((t) => t[1].length > 0)
@@ -599,11 +605,19 @@ function getPropInfo(prop: string[]) {
             break;
         case "D":
             bytes = 7;
-            type = "Date";
-            init = "new Date()";
-            dec = `readDateTime(buffer, ofs)`;
-            enc = `writeDateTime(buffer, this.${name}, ofs)`;
-            str = `this.${name}.toISOString()`;
+            type = "DateTime";
+            init = "new DateTime(0, 0, 0, 0, 0, 0)";
+            dec = `DateTime.decode(buffer, ofs)`;
+            enc = `this.${name}.encode(buffer, ofs)`;
+            str = `this.${name}.toString()`;
+            break;
+        case "T":
+            bytes = 2;
+            type = "Time";
+            init = "new Time(0, 0)";
+            dec = `Time.decode(buffer, ofs)`;
+            enc = `this.${name}.encode(buffer, ofs)`;
+            str = `this.${name}.toString()`
             break;
         default:
             throw new Error("Unsupported type " + prop[1]);

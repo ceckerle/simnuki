@@ -1,7 +1,9 @@
 import {Command} from "./Command";
 import {CMD_AUTHORIZATION_ENTRY, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
-import {readString, writeString, readDateTime, writeDateTime} from "./Util";
+import {readString, writeString} from "./Util";
+import {DateTime} from "./DateTime";
+import {Time} from "./Time";
 
 export class AuthorizationEntryCommand extends Command {
     
@@ -11,32 +13,32 @@ export class AuthorizationEntryCommand extends Command {
     name: string;
     enabled: boolean;
     remoteAllowed: boolean;
-    dateCreated: Date;
-    dateLastActive: Date;
+    dateCreated: DateTime;
+    dateLastActive: DateTime;
     lockCount: number;
     timeLimited: boolean;
-    allowedFromDate: Date;
-    allowedUntilDate: Date;
+    allowedFromDate: DateTime;
+    allowedUntilDate: DateTime;
     allowedWeekdays: number;
-    allowedFromTime: number;
-    allowedToTime: number;
+    allowedFromTime: Time;
+    allowedToTime: Time;
 
-    constructor(authorizationId?: number, idType?: number, name?: string, enabled?: boolean, remoteAllowed?: boolean, dateCreated?: Date, dateLastActive?: Date, lockCount?: number, timeLimited?: boolean, allowedFromDate?: Date, allowedUntilDate?: Date, allowedWeekdays?: number, allowedFromTime?: number, allowedToTime?: number) {
+    constructor(authorizationId?: number, idType?: number, name?: string, enabled?: boolean, remoteAllowed?: boolean, dateCreated?: DateTime, dateLastActive?: DateTime, lockCount?: number, timeLimited?: boolean, allowedFromDate?: DateTime, allowedUntilDate?: DateTime, allowedWeekdays?: number, allowedFromTime?: Time, allowedToTime?: Time) {
         super();
         this.authorizationId = authorizationId ?? 0;
         this.idType = idType ?? 0;
         this.name = name ?? "";
         this.enabled = enabled ?? false;
         this.remoteAllowed = remoteAllowed ?? false;
-        this.dateCreated = dateCreated ?? new Date();
-        this.dateLastActive = dateLastActive ?? new Date();
+        this.dateCreated = dateCreated ?? new DateTime(0, 0, 0, 0, 0, 0);
+        this.dateLastActive = dateLastActive ?? new DateTime(0, 0, 0, 0, 0, 0);
         this.lockCount = lockCount ?? 0;
         this.timeLimited = timeLimited ?? false;
-        this.allowedFromDate = allowedFromDate ?? new Date();
-        this.allowedUntilDate = allowedUntilDate ?? new Date();
+        this.allowedFromDate = allowedFromDate ?? new DateTime(0, 0, 0, 0, 0, 0);
+        this.allowedUntilDate = allowedUntilDate ?? new DateTime(0, 0, 0, 0, 0, 0);
         this.allowedWeekdays = allowedWeekdays ?? 0;
-        this.allowedFromTime = allowedFromTime ?? 0;
-        this.allowedToTime = allowedToTime ?? 0;
+        this.allowedFromTime = allowedFromTime ?? new Time(0, 0);
+        this.allowedToTime = allowedToTime ?? new Time(0, 0);
     }
     
     decode(buffer: Buffer): void {
@@ -54,23 +56,23 @@ export class AuthorizationEntryCommand extends Command {
         ofs += 1;
         this.remoteAllowed = buffer.readUInt8(ofs) === 1;
         ofs += 1;
-        this.dateCreated = readDateTime(buffer, ofs);
+        this.dateCreated = DateTime.decode(buffer, ofs);
         ofs += 7;
-        this.dateLastActive = readDateTime(buffer, ofs);
+        this.dateLastActive = DateTime.decode(buffer, ofs);
         ofs += 7;
         this.lockCount = buffer.readUInt16LE(ofs);
         ofs += 2;
         this.timeLimited = buffer.readUInt8(ofs) === 1;
         ofs += 1;
-        this.allowedFromDate = readDateTime(buffer, ofs);
+        this.allowedFromDate = DateTime.decode(buffer, ofs);
         ofs += 7;
-        this.allowedUntilDate = readDateTime(buffer, ofs);
+        this.allowedUntilDate = DateTime.decode(buffer, ofs);
         ofs += 7;
         this.allowedWeekdays = buffer.readUInt8(ofs);
         ofs += 1;
-        this.allowedFromTime = buffer.readUInt16LE(ofs);
+        this.allowedFromTime = Time.decode(buffer, ofs);
         ofs += 2;
-        this.allowedToTime = buffer.readUInt16LE(ofs);
+        this.allowedToTime = Time.decode(buffer, ofs);
     }
 
     encode(): Buffer {
@@ -86,23 +88,23 @@ export class AuthorizationEntryCommand extends Command {
         ofs += 1;
         buffer.writeUInt8(this.remoteAllowed === true ? 1 : 0, ofs);
         ofs += 1;
-        writeDateTime(buffer, this.dateCreated, ofs);
+        this.dateCreated.encode(buffer, ofs);
         ofs += 7;
-        writeDateTime(buffer, this.dateLastActive, ofs);
+        this.dateLastActive.encode(buffer, ofs);
         ofs += 7;
         buffer.writeUInt16LE(this.lockCount, ofs);
         ofs += 2;
         buffer.writeUInt8(this.timeLimited === true ? 1 : 0, ofs);
         ofs += 1;
-        writeDateTime(buffer, this.allowedFromDate, ofs);
+        this.allowedFromDate.encode(buffer, ofs);
         ofs += 7;
-        writeDateTime(buffer, this.allowedUntilDate, ofs);
+        this.allowedUntilDate.encode(buffer, ofs);
         ofs += 7;
         buffer.writeUInt8(this.allowedWeekdays, ofs);
         ofs += 1;
-        buffer.writeUInt16LE(this.allowedFromTime, ofs);
+        this.allowedFromTime.encode(buffer, ofs);
         ofs += 2;
-        buffer.writeUInt16LE(this.allowedToTime, ofs);
+        this.allowedToTime.encode(buffer, ofs);
         return buffer;
     }
     
@@ -113,15 +115,15 @@ export class AuthorizationEntryCommand extends Command {
         str += "\n  name: " + this.name;
         str += "\n  enabled: " + this.enabled;
         str += "\n  remoteAllowed: " + this.remoteAllowed;
-        str += "\n  dateCreated: " + this.dateCreated.toISOString();
-        str += "\n  dateLastActive: " + this.dateLastActive.toISOString();
+        str += "\n  dateCreated: " + this.dateCreated.toString();
+        str += "\n  dateLastActive: " + this.dateLastActive.toString();
         str += "\n  lockCount: " + "0x" + this.lockCount.toString(16).padStart(4, "0");
         str += "\n  timeLimited: " + this.timeLimited;
-        str += "\n  allowedFromDate: " + this.allowedFromDate.toISOString();
-        str += "\n  allowedUntilDate: " + this.allowedUntilDate.toISOString();
+        str += "\n  allowedFromDate: " + this.allowedFromDate.toString();
+        str += "\n  allowedUntilDate: " + this.allowedUntilDate.toString();
         str += "\n  allowedWeekdays: " + "0x" + this.allowedWeekdays.toString(16).padStart(2, "0");
-        str += "\n  allowedFromTime: " + "0x" + this.allowedFromTime.toString(16).padStart(4, "0");
-        str += "\n  allowedToTime: " + "0x" + this.allowedToTime.toString(16).padStart(4, "0");
+        str += "\n  allowedFromTime: " + this.allowedFromTime.toString();
+        str += "\n  allowedToTime: " + this.allowedToTime.toString();
         str += "\n}";
         return str;
     }

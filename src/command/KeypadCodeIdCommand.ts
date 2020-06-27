@@ -1,18 +1,18 @@
 import {Command} from "./Command";
 import {CMD_KEYPAD_CODE_ID, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
-import {readDateTime, writeDateTime} from "./Util";
+import {DateTime} from "./DateTime";
 
 export class KeypadCodeIdCommand extends Command {
     
     readonly id = CMD_KEYPAD_CODE_ID;
     codeId: number;
-    dateCreated: Date;
+    dateCreated: DateTime;
 
-    constructor(codeId?: number, dateCreated?: Date) {
+    constructor(codeId?: number, dateCreated?: DateTime) {
         super();
         this.codeId = codeId ?? 0;
-        this.dateCreated = dateCreated ?? new Date();
+        this.dateCreated = dateCreated ?? new DateTime(0, 0, 0, 0, 0, 0);
     }
     
     decode(buffer: Buffer): void {
@@ -22,7 +22,7 @@ export class KeypadCodeIdCommand extends Command {
         let ofs = 0;
         this.codeId = buffer.readUInt16LE(ofs);
         ofs += 2;
-        this.dateCreated = readDateTime(buffer, ofs);
+        this.dateCreated = DateTime.decode(buffer, ofs);
     }
 
     encode(): Buffer {
@@ -30,14 +30,14 @@ export class KeypadCodeIdCommand extends Command {
         let ofs = 0;
         buffer.writeUInt16LE(this.codeId, ofs);
         ofs += 2;
-        writeDateTime(buffer, this.dateCreated, ofs);
+        this.dateCreated.encode(buffer, ofs);
         return buffer;
     }
     
     toString(): string {
         let str = "KeypadCodeIdCommand {";
         str += "\n  codeId: " + "0x" + this.codeId.toString(16).padStart(4, "0");
-        str += "\n  dateCreated: " + this.dateCreated.toISOString();
+        str += "\n  dateCreated: " + this.dateCreated.toString();
         str += "\n}";
         return str;
     }

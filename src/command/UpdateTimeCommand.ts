@@ -1,18 +1,18 @@
 import {CommandNeedsSecurityPin} from "./CommandNeedsSecurityPin";
 import {CMD_UPDATE_TIME, ERROR_BAD_LENGTH} from "./Constants";
 import {DecodingError} from "./DecodingError";
-import {readDateTime, writeDateTime} from "./Util";
+import {DateTime} from "./DateTime";
 
 export class UpdateTimeCommand extends CommandNeedsSecurityPin {
     
     readonly id = CMD_UPDATE_TIME;
-    time: Date;
+    time: DateTime;
     nonce: Buffer;
     securityPin: number;
 
-    constructor(time?: Date, nonce?: Buffer, securityPin?: number) {
+    constructor(time?: DateTime, nonce?: Buffer, securityPin?: number) {
         super();
-        this.time = time ?? new Date();
+        this.time = time ?? new DateTime(0, 0, 0, 0, 0, 0);
         this.nonce = nonce ?? Buffer.alloc(32);
         this.securityPin = securityPin ?? 0;
     }
@@ -22,7 +22,7 @@ export class UpdateTimeCommand extends CommandNeedsSecurityPin {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
-        this.time = readDateTime(buffer, ofs);
+        this.time = DateTime.decode(buffer, ofs);
         ofs += 7;
         this.nonce = buffer.slice(ofs, ofs + 32);
         ofs += 32;
@@ -32,7 +32,7 @@ export class UpdateTimeCommand extends CommandNeedsSecurityPin {
     encode(): Buffer {
         const buffer = Buffer.alloc(41);
         let ofs = 0;
-        writeDateTime(buffer, this.time, ofs);
+        this.time.encode(buffer, ofs);
         ofs += 7;
         this.nonce.copy(buffer, ofs);
         ofs += 32;
@@ -42,7 +42,7 @@ export class UpdateTimeCommand extends CommandNeedsSecurityPin {
     
     toString(): string {
         let str = "UpdateTimeCommand {";
-        str += "\n  time: " + this.time.toISOString();
+        str += "\n  time: " + this.time.toString();
         str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
         str += "\n  securityPin: " + "0x" + this.securityPin.toString(16).padStart(4, "0");
         str += "\n}";
