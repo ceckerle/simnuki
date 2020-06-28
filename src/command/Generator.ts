@@ -3,7 +3,7 @@ import {readFileSync, writeFileSync} from "fs";
 const DEFINITIONS = `
 !RequestData,1
 commandId,u,2
-additionalData,B,0
+additionalData,B,*
 !PublicKey,3
 publicKey,B,32
 !Challenge,4
@@ -199,7 +199,7 @@ timestamp,D
 authorizationId,u,4
 name,s,32
 type,u,1
-data,B,0
+data,B,*
 !LogEntryCount,33
 loggingEnabled,u,1
 count,u,2
@@ -406,6 +406,7 @@ function buildCommands() {
         const id = parseInt(command[0][1], 16);
         const superClass = command[0].length > 2 ? command[0][2] : "Command";
         const props = command.slice(1).map(getPropInfo);
+        const varlenprop = props.find((p) => p.varlen);
         const optIdxs = props.map((p, i) => [p.optional, i] as [boolean, number]).filter((t) => t[0]).map((t) => t[1]);
         const optIdx = optIdxs.length > 0 ? optIdxs[0] : props.length;
         let trailIdx = props.findIndex((p) => p.trailer);
@@ -430,7 +431,7 @@ ${props.map((p, i) =>
     }
     
     decode(buffer: Buffer): void {
-        if (${optBytes.map((b) => `buffer.length !== ${b} && `).join("")}buffer.length !== ${maxBytes}) {
+        if (${optBytes.map((b) => `buffer.length !== ${b} && `).join("")}buffer.length ${varlenprop ? "<" : "!=="} ${maxBytes}) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         ${props.length > 1 ? "let" : "const"} ofs = 0;
@@ -438,7 +439,7 @@ ${props.map((p, i) => buildDecodeProp(props, p, trailIdx, trailerBytes, i)).join
     }
 
     encode(): Buffer {
-        const buffer = Buffer.alloc(${maxBytes});
+        const buffer = Buffer.alloc(${maxBytes}${varlenprop ? ` + this.${varlenprop.name}.length` : ""});
         ${props.length > 1 ? "let" : "const"} ofs = 0;
 ${props.map((p, i) => buildEncodeProp(props, p, trailIdx, trailerBytes, i)).join("\n")}
         return buffer${optIdxs.length > 0 ? ".slice(0, ofs)" : ""};
@@ -530,6 +531,7 @@ interface PropDef {
     optional: boolean;
     trailer: boolean;
     name: string;
+    varlen: boolean;
     bytes: number;
     type: string;
     init: string;
@@ -607,7 +609,8 @@ function getPropInfo(prop: string[]): PropDef {
     const trailer = prop[0].startsWith("#");
     const name = prop[0].substring(optional || trailer ? 1 : 0);
     const t = prop[1];
-    let bytes = prop.length > 1 ? parseInt(prop[2], 10) : 0;
+    const varlen = prop.length > 1 && prop[2] === "*";
+    let bytes = varlen ? 0 : (prop.length > 1 ? parseInt(prop[2], 10) : 0);
     let type: string;
     let init: string;
     let dec: string;
@@ -624,7 +627,7 @@ function getPropInfo(prop: string[]): PropDef {
         case "B":
             type = "Buffer";
             init = `Buffer.alloc(${bytes})`;
-            dec = `buffer.slice(ofs, ofs + ${bytes})`;
+            dec = `buffer.slice(ofs, ${varlen ? "buffer.length" : "ofs + " + bytes})`;
             enc = `(@).copy(buffer, ofs)`;
             str = `"0x" + (@).toString("hex")`
             break;
@@ -691,6 +694,7 @@ function getPropInfo(prop: string[]): PropDef {
         optional,
         trailer,
         name,
+        varlen,
         type,
         bytes,
         init,
