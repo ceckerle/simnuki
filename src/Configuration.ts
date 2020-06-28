@@ -135,7 +135,18 @@ export class Configuration {
         this.config.set(key, value);
     }
 
+    public getSerial(): number {
+        return this.config.get("serial");
+    }
+
     public save(): Promise<void> {
+        let serial = this.config.get("serial");
+        if (serial === undefined) {
+            serial = 0;
+        } else {
+            serial++;
+        }
+        this.config.set("serial", serial);
         return new Promise((resolve, reject) => {
             this.config.save(null, (error) => {
                 if (error) {

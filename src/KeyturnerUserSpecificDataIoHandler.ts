@@ -388,7 +388,7 @@ export class KeyturnerUserSpecificDataIoHandler {
             DateTime.fromDate(now),
             -now.getTimezoneOffset(),
             false,
-            0,
+            this.config.getSerial() & 0xff,
             0,
             0,
             0,
