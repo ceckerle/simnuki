@@ -186,7 +186,7 @@ export class PairingGeneralDataIoHandler {
             const response = new AuthorizationIdCommand(
                 undefined,
                 authorizationId,
-                new Buffer(this.config.getUuid(), "hex"),
+                Buffer.from(this.config.getUuid(), "hex"),
                 random(NUKI_NONCEBYTES)
             )
 

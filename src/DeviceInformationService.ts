@@ -11,17 +11,17 @@ export class DeviceInformationService extends bleno.PrimaryService {
                 new bleno.Characteristic({
                     uuid: "2A25",
                     properties: ["read"],
-                    value: new Buffer(config.getNukiIdStr(), "ascii")
+                    value: Buffer.from(config.getNukiIdStr(), "ascii")
                 }),
                 new bleno.Characteristic({
                     uuid: "2A26",
                     properties: ["read"],
-                    value: new Buffer(DeviceInformationService.formatVersion(FIRMWARE_VERSION, 3), "ascii")
+                    value: Buffer.from(DeviceInformationService.formatVersion(FIRMWARE_VERSION, 3), "ascii")
                 }),
                 new bleno.Characteristic({
                     uuid: "2A27",
                     properties: ["read"],
-                    value: new Buffer(DeviceInformationService.formatVersion(HARDWARE_VERSION, 2), "ascii")
+                    value: Buffer.from(DeviceInformationService.formatVersion(HARDWARE_VERSION, 2), "ascii")
                 })
             ]
         });

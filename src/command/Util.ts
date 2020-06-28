@@ -25,7 +25,7 @@ export function writeString(data: Buffer, str: string, offset = 0, length?: numb
     data.fill(0, offset, offset + length);
     let ofs = offset;
     for (let i = 0; i < str.length; i++) {
-        const bytes = new Buffer(str.charAt(i), "utf-8");
+        const bytes = Buffer.from(str.charAt(i), "utf-8");
         if (offset + length - ofs < bytes.length) {
             break;
         }

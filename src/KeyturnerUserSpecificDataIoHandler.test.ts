@@ -62,11 +62,11 @@ test("get config", async () => {
 function wrapHandleRequest(handleRequest: (data: Buffer, sendAsync: (data: Buffer) => Promise<void>) => Promise<Buffer>)  {
     return async <T extends Command>(command: Command, clazz: new() => T): Promise<T> => {
         const nonce = random(24);
-        const encrypted = encryptCommand(encodeCommand(command), user.authorizationId, nonce, new Buffer(user.sharedSecret, "hex"));
+        const encrypted = encryptCommand(encodeCommand(command), user.authorizationId, nonce, Buffer.from(user.sharedSecret, "hex"));
         const result = await handleRequest(encrypted, async () => undefined);
         const decrypted = decryptCommand(result, (id) => {
             expect(id).toBe(user.authorizationId);
-            return new Buffer(user.sharedSecret, "hex");
+            return Buffer.from(user.sharedSecret, "hex");
         });
         const resultCommand = decodeCommand(decrypted.data, true);
         expect(resultCommand).toBeInstanceOf(clazz);

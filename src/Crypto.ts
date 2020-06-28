@@ -7,7 +7,7 @@ export function random(len: number): Buffer {
 
 export function generateKeyPair(): {privateKey: Buffer, publicKey: Buffer} {
     const privateKey = random(32);
-    const publicKey = new Buffer(nacl.scalarMult.base(privateKey));
+    const publicKey = Buffer.from(nacl.scalarMult.base(privateKey));
     return {
         privateKey,
         publicKey
@@ -15,21 +15,21 @@ export function generateKeyPair(): {privateKey: Buffer, publicKey: Buffer} {
 }
 
 export function deriveSharedSecret(privateKey: Buffer, publicKey: Buffer): Buffer {
-    const k = new Buffer(nacl.scalarMult(privateKey, publicKey));
+    const k = Buffer.from(nacl.scalarMult(privateKey, publicKey));
     const _0 = Buffer.alloc(16);
-    const sigma = new Buffer("expand 32-byte k");
+    const sigma = Buffer.from("expand 32-byte k");
     const sharedKey = Buffer.alloc(32);
     (nacl as NaclLowLevel).lowlevel.crypto_core_hsalsa20(sharedKey, _0, k, sigma);
     return sharedKey;
 }
 
 export function encrypt(data: Buffer, nonce: Buffer, key: Buffer): Buffer {
-    return new Buffer(nacl.secretbox(data, nonce,  key));
+    return Buffer.from(nacl.secretbox(data, nonce,  key));
 }
 
 export function decrypt(data: Buffer, nonce: Buffer, key: Buffer): Buffer|null {
     const decrypted = nacl.secretbox.open(data, nonce, key) as Uint8Array;
-    return decrypted ? new Buffer(decrypted) : null;
+    return decrypted ? Buffer.from(decrypted) : null;
 }
 
 export function computeAuthenticator(key: Buffer, ...data: Buffer[]): Buffer {

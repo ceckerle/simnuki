@@ -87,7 +87,7 @@ export class KeyturnerUserSpecificDataIoHandler {
         try {
             const {data: decrypted, authorizationId, nonce, sharedSecret} = decryptCommand(data, (id) => {
                 const user = this.config.getUser(id);
-                return user && new Buffer(user.sharedSecret, "hex");
+                return user && Buffer.from(user.sharedSecret, "hex");
             });
             try {
                 const command = decodeCommand(decrypted, true);
@@ -458,7 +458,7 @@ export function encryptCommand(data: Buffer, authId: number, nonce: Buffer, shar
 
     const pDataEncrypted = encrypt(responseData, nonce, sharedSecret);
 
-    const lenBuffer = new Buffer(2);
+    const lenBuffer = Buffer.alloc(2);
     lenBuffer.writeUInt16LE(pDataEncrypted.length, 0);
 
     return Buffer.concat([nonce, authIdBuffer, lenBuffer, pDataEncrypted]);

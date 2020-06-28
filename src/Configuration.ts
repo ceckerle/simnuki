@@ -30,7 +30,7 @@ export class Configuration {
         if (!strUuid) {
             const arrUUID = new Array(16);
             uuid.v1(null, arrUUID);
-            this.config.set('uuid', new Buffer(arrUUID).toString('hex'));
+            this.config.set('uuid', Buffer.from(arrUUID).toString('hex'));
             let nukiId: Buffer;
             do {
                 nukiId = random(4);
