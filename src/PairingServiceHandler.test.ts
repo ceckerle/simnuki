@@ -1,12 +1,12 @@
 import {Configuration, User} from "./Configuration";
 import {mocked} from "ts-jest/utils";
-import {PairingGeneralDataIoHandler} from "./PairingGeneralDataIoHandler";
+import {PairingServiceHandler} from "./PairingServiceHandler";
 import {computeAuthenticator, deriveSharedSecret, generateKeyPair, random} from "./Crypto";
 import {decodeCommand, encodeCommand} from "./command/Codec";
 import {RequestDataCommand} from "./command/RequestDataCommand";
 import {CMD_PUBLIC_KEY, STATUS_COMPLETE} from "./command/Constants";
 import {PublicKeyCommand} from "./command/PublicKeyCommand";
-import {NUKI_NONCEBYTES, NUKI_STATE_PAIRING_MODE} from "./Protocol";
+import {NUKI_NONCEBYTES, NUKI_STATE_PAIRING_MODE, PAIRING_GDIO_CHARACTERISTIC} from "./Protocol";
 import {Command} from "./command/Command";
 import {ChallengeCommand} from "./command/ChallengeCommand";
 import {AuthorizationAuthenticatorCommand} from "./command/AuthorizationAuthenticatorCommand";
@@ -14,12 +14,13 @@ import {AuthorizationDataCommand} from "./command/AuthorizationDataCommand";
 import {AuthorizationIdCommand} from "./command/AuthorizationIdCommand";
 import {AuthorizationIdConfirmationCommand} from "./command/AuthorizationIdConfirmationCommand";
 import {StatusCommand} from "./command/StatusCommand";
+import {DataIoServiceHandler} from "./DataIoService";
 
 jest.mock("./Configuration");
 
 const config = new Configuration();
 const mockedConfig = mocked(config, true);
-const unwrappedHandler = new PairingGeneralDataIoHandler(config);
+const unwrappedHandler = new PairingServiceHandler(config);
 const handler = wrapHandleRequest(unwrappedHandler.handleRequest.bind(unwrappedHandler));
 
 beforeEach(() => {
@@ -72,10 +73,21 @@ test("pairing", async () => {
     expect(status.status).toBe(STATUS_COMPLETE);
 });
 
-function wrapHandleRequest(handleRequest: (data: Buffer) => Promise<Buffer>)  {
+function wrapHandleRequest(handleRequest: DataIoServiceHandler)  {
     return async <T extends Command>(command: Command, clazz: new() => T): Promise<T> => {
-        const result = decodeCommand(await handleRequest(encodeCommand(command)));
-        expect(result).toBeInstanceOf(clazz);
-        return result as T;
+        return new Promise<T>((resolve, reject) => {
+            handleRequest(encodeCommand(command), PAIRING_GDIO_CHARACTERISTIC, async (data, characteristicId) => {
+                try {
+                    if (characteristicId !== PAIRING_GDIO_CHARACTERISTIC) {
+                        throw new Error(`Unexpected characteristic id ${characteristicId.toString(16)}`);
+                    }
+                    const result = decodeCommand(data);
+                    expect(result).toBeInstanceOf(clazz);
+                    resolve(result as T);
+                } catch (e) {
+                    reject(e);
+                }
+            }).catch(reject);
+        });
     };
 }

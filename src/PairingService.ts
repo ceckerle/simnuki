@@ -1,16 +1,13 @@
-import * as bleno from "@abandonware/bleno"
-import {PAIRING_GDIO_CHARACTERISTIC_UUID, PAIRING_SERVICE_UUID} from "./Protocol";
-import {DataIoCharacteristic, DataIoCharacteristicHandler} from "./DataIoCharacteristic";
+import {PAIRING_GDIO_CHARACTERISTIC, PAIRING_GDIO_CHARACTERISTIC_UUID, PAIRING_SERVICE_UUID} from "./Protocol";
+import {DataIoService, DataIoServiceHandler} from "./DataIoService";
 
-export class PairingService extends bleno.PrimaryService {
+export class PairingService extends DataIoService {
 
-    constructor(handler: DataIoCharacteristicHandler) {
-        super({
-            uuid: PAIRING_SERVICE_UUID,
-            characteristics: [
-                new DataIoCharacteristic(PAIRING_GDIO_CHARACTERISTIC_UUID, handler)
-            ]
-        });
+    constructor(handler: DataIoServiceHandler) {
+        super(PAIRING_SERVICE_UUID, [{
+            uuid: PAIRING_GDIO_CHARACTERISTIC_UUID,
+            id: PAIRING_GDIO_CHARACTERISTIC
+        }], handler);
     }
 
 }

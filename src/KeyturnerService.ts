@@ -1,25 +1,25 @@
-import * as bleno from "@abandonware/bleno";
 import {
+    KEYTURNER_GDIO_CHARACTERISTIC,
     KEYTURNER_GDIO_CHARACTERISTIC_UUID,
-    KEYTURNER_SERVICE_UUID,
-    KEYTURNER_THRID_CHARACTERISTIC_UUID, KEYTURNER_USDIO_CHARACTERISTIC_UUID
+    KEYTURNER_SERVICE_UUID, KEYTURNER_THRID_CHARACTERISTIC,
+    KEYTURNER_THRID_CHARACTERISTIC_UUID, KEYTURNER_USDIO_CHARACTERISTIC, KEYTURNER_USDIO_CHARACTERISTIC_UUID
 } from "./Protocol";
-import {DataIoCharacteristic, DataIoCharacteristicHandler} from "./DataIoCharacteristic";
+import {DataIoService, DataIoServiceHandler} from "./DataIoService";
 
-export class KeyturnerService extends bleno.PrimaryService {
+export class KeyturnerService extends DataIoService {
 
-    constructor(gdioHandler: DataIoCharacteristicHandler, usdioHandler: DataIoCharacteristicHandler) {
-        super({
-            uuid: KEYTURNER_SERVICE_UUID,
-            characteristics: [
-                new DataIoCharacteristic(KEYTURNER_GDIO_CHARACTERISTIC_UUID, gdioHandler),
-                new DataIoCharacteristic(KEYTURNER_USDIO_CHARACTERISTIC_UUID, usdioHandler),
-                new bleno.Characteristic({
-                    uuid: KEYTURNER_THRID_CHARACTERISTIC_UUID,
-                    properties: ["writeWithoutResponse"]
-                })
-            ]
-        });
+    constructor(handler: DataIoServiceHandler) {
+        super(KEYTURNER_SERVICE_UUID, [{
+            uuid: KEYTURNER_GDIO_CHARACTERISTIC_UUID,
+            id: KEYTURNER_GDIO_CHARACTERISTIC
+        }, {
+            uuid: KEYTURNER_USDIO_CHARACTERISTIC_UUID,
+            id: KEYTURNER_USDIO_CHARACTERISTIC
+        }, {
+            uuid: KEYTURNER_THRID_CHARACTERISTIC_UUID,
+            id: KEYTURNER_THRID_CHARACTERISTIC,
+            writeOnly: true
+        }], handler);
     }
 
 }

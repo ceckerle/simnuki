@@ -4,16 +4,14 @@ import {PairingService} from "./PairingService";
 import {KeyturnerService} from "./KeyturnerService";
 import {DeviceInformationService} from "./DeviceInformationService";
 import {Configuration} from "./Configuration";
-import {KeyturnerGeneralDataIoHandler} from "./KeyturnerGeneralDataIoHandler";
-import {PairingGeneralDataIoHandler} from "./PairingGeneralDataIoHandler";
-import {KeyturnerUserSpecificDataIoHandler} from "./KeyturnerUserSpecificDataIoHandler";
+import {PairingServiceHandler} from "./PairingServiceHandler";
+import {KeyturnerServiceHandler} from "./KeyturnerServiceHandler";
 
 export class Keyturner {
 
     private config: Configuration;
-    private pairingCharacteristicHandler: PairingGeneralDataIoHandler;
-    private keyturnerGeneralCharacteristicHandler: KeyturnerGeneralDataIoHandler;
-    private keyturnerUserSpecificCharacteristicHandler: KeyturnerUserSpecificDataIoHandler;
+    private pairingServiceHandler: PairingServiceHandler;
+    private keyturnerServiceHandler: KeyturnerServiceHandler;
     private advertiser: Advertiser;
     private keyturnerPairingService: PairingService;
     private keyturnerService: KeyturnerService;
@@ -21,16 +19,14 @@ export class Keyturner {
 
     constructor() {
         this.config = new Configuration();
-        this.pairingCharacteristicHandler = new PairingGeneralDataIoHandler(this.config);
-        this.keyturnerGeneralCharacteristicHandler = new KeyturnerGeneralDataIoHandler();
-        this.keyturnerUserSpecificCharacteristicHandler = new KeyturnerUserSpecificDataIoHandler(this.config);
+        this.pairingServiceHandler = new PairingServiceHandler(this.config);
+        this.keyturnerServiceHandler = new KeyturnerServiceHandler(this.config);
         this.advertiser = new Advertiser(this.config);
         this.keyturnerPairingService = new PairingService(
-            this.pairingCharacteristicHandler.handleRequest.bind(this.pairingCharacteristicHandler)
+            this.pairingServiceHandler.handleRequest.bind(this.pairingServiceHandler)
         );
         this.keyturnerService = new KeyturnerService(
-            this.keyturnerGeneralCharacteristicHandler.handleRequest.bind(this.keyturnerGeneralCharacteristicHandler),
-            this.keyturnerUserSpecificCharacteristicHandler.handleRequest.bind(this.keyturnerUserSpecificCharacteristicHandler)
+            this.keyturnerServiceHandler.handleRequest.bind(this.keyturnerServiceHandler)
         );
         this.deviceInformationService = new DeviceInformationService(this.config);
     }
@@ -62,8 +58,8 @@ export class Keyturner {
 
     private onDisconnect = () => {
         console.log('on -> disconnect');
-        this.pairingCharacteristicHandler.reset();
-        this.keyturnerUserSpecificCharacteristicHandler.reset();
+        this.pairingServiceHandler.reset();
+        this.keyturnerServiceHandler.reset();
         this.advertiser.update();
     }
 

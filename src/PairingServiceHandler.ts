@@ -3,7 +3,7 @@ import {computeAuthenticator, deriveSharedSecret, generateKeyPair, random} from 
 import {
     NUKI_NONCEBYTES,
     NUKI_STATE_PAIRING_MODE,
-    NUKI_STATE_UNINITIALIZED
+    NUKI_STATE_UNINITIALIZED, PAIRING_GDIO_CHARACTERISTIC
 } from "./Protocol";
 import {decodeCommand, encodeCommand} from "./command/Codec";
 import {Command} from "./command/Command";
@@ -56,7 +56,7 @@ interface PairingStateAuthorizationIdSent {
     challenge: Buffer;
 }
 
-export class PairingGeneralDataIoHandler {
+export class PairingServiceHandler {
 
     private state: PairingState = {
         key: "Initial"
@@ -77,7 +77,7 @@ export class PairingGeneralDataIoHandler {
         }
     }
 
-    async handleRequest (data: Buffer): Promise<Buffer> {
+    async handleRequest (data: Buffer, characteristicId: number, sendAsync: (data: Buffer, characteristicId: number) => Promise<void>): Promise<void> {
         try {
             const command = decodeCommand(data);
             console.log("received " + command.toString());
@@ -91,16 +91,16 @@ export class PairingGeneralDataIoHandler {
                     console.log(response.message);
                 }
             }
-            return encodeCommand(response);
+            await sendAsync(encodeCommand(response), PAIRING_GDIO_CHARACTERISTIC);
         } catch (e) {
             console.log(e);
             this.state = {
                 key: "Initial"
             };
             if (e instanceof DecodingError) {
-                return encodeCommand(new ErrorCommand(e.code, e.commandId));
+                await sendAsync(encodeCommand(new ErrorCommand(e.code, e.commandId)), PAIRING_GDIO_CHARACTERISTIC);
             } else {
-                return encodeCommand(new ErrorCommand(ERROR_UNKNOWN));
+                await sendAsync(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), PAIRING_GDIO_CHARACTERISTIC);
             }
         }
     }

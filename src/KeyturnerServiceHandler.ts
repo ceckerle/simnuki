@@ -5,7 +5,7 @@ import {
     FOB_ACTION_INTELLIGENT,
     FOB_ACTION_LOCK,
     FOB_ACTION_LOCKNGO, FOB_ACTION_NONE,
-    FOB_ACTION_UNLOCK,
+    FOB_ACTION_UNLOCK, HARDWARE_VERSION, KEYTURNER_GDIO_CHARACTERISTIC, KEYTURNER_USDIO_CHARACTERISTIC,
     LOCK_ACTION_FOB_ACTION_1,
     LOCK_ACTION_FOB_ACTION_2,
     LOCK_ACTION_FOB_ACTION_3, LOCK_ACTION_FULL_LOCK,
@@ -19,9 +19,17 @@ import {decodeCommand, encodeCommand} from "./command/Codec";
 import {
     CMD_CHALLENGE,
     CMD_FIRMWARE_STATUS,
-    CMD_KEYTURNER_STATES, ERROR_BAD_CRC, ERROR_BAD_LENGTH,
+    CMD_KEYTURNER_STATES,
+    ERROR_BAD_CRC,
+    ERROR_BAD_LENGTH,
     ERROR_UNKNOWN,
-    K_ERROR_BAD_NONCE, K_ERROR_BAD_PARAMETER, K_ERROR_BAD_PIN, K_ERROR_INVALID_AUTH_ID, STATUS_ACCEPTED, STATUS_COMPLETE
+    K_ERROR_BAD_NONCE,
+    K_ERROR_BAD_PARAMETER,
+    K_ERROR_BAD_PIN,
+    K_ERROR_INVALID_AUTH_ID,
+    K_ERROR_NOT_AUTHORIZED,
+    STATUS_ACCEPTED,
+    STATUS_COMPLETE
 } from "./command/Constants";
 import {Command} from "./command/Command";
 import {RequestDataCommand} from "./command/RequestDataCommand";
@@ -68,7 +76,7 @@ interface KeyturnerStateChallengeSent {
 
 type KeyturnerState = KeyturnerStateInitial|KeyturnerStateChallengeSent;
 
-export class KeyturnerUserSpecificDataIoHandler {
+export class KeyturnerServiceHandler {
 
     private state: KeyturnerState = {
         key: "Initial"
@@ -83,46 +91,50 @@ export class KeyturnerUserSpecificDataIoHandler {
         }
     }
 
-    async handleRequest(data: Buffer, sendAsync: (data: Buffer) => Promise<void>): Promise<Buffer> {
-        try {
-            const {data: decrypted, authorizationId, nonce, sharedSecret} = decryptCommand(data, (id) => {
-                const user = this.config.getUser(id);
-                return user && Buffer.from(user.sharedSecret, "hex");
-            });
+    async handleRequest(data: Buffer, characteristicId: number, sendAsync: (data: Buffer, characteristicId: number) => Promise<void>): Promise<void> {
+        if (characteristicId === KEYTURNER_USDIO_CHARACTERISTIC) {
             try {
-                const command = decodeCommand(decrypted, true);
-                console.log("received " + command.toString());
+                const {data: decrypted, authorizationId, nonce, sharedSecret} = decryptCommand(data, (id) => {
+                    const user = this.config.getUser(id);
+                    return user && Buffer.from(user.sharedSecret, "hex");
+                });
+                try {
+                    const command = decodeCommand(decrypted, true);
+                    console.log("received " + command.toString());
 
-                const sendCommand = async (command: Command): Promise<void> => {
-                    console.log("sending " + command.toString());
-                    await sendAsync(encryptCommand(encodeCommand(command), authorizationId, nonce, sharedSecret));
-                };
+                    const sendCommand = async (command: Command): Promise<void> => {
+                        console.log("sending " + command.toString());
+                        await sendAsync(encryptCommand(encodeCommand(command), authorizationId, nonce, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
+                    };
 
-                const response = await this.handleCommand(command, sendCommand);
-                console.log("sending " + response.toString());
-                if (response instanceof ErrorCommand) {
+                    const response = await this.handleCommand(command, sendCommand);
+                    console.log("sending " + response.toString());
+                    if (response instanceof ErrorCommand) {
+                        this.state = {
+                            key: "Initial"
+                        };
+                        if (response.message) {
+                            console.log(response.message);
+                        }
+                    }
+                    await sendAsync(encryptCommand(encodeCommand(response), authorizationId, nonce, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
+                } catch (e) {
+                    console.log("Command failed", decrypted.toString("hex"), e);
                     this.state = {
                         key: "Initial"
                     };
-                    if (response.message) {
-                        console.log(response.message);
+                    if (e instanceof DecodingError) {
+                        await sendAsync(encryptCommand(encodeCommand(new ErrorCommand(e.code, e.commandId)), authorizationId, nonce, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
+                    } else {
+                        await sendAsync(encryptCommand(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), authorizationId, nonce, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
                     }
                 }
-                return encryptCommand(encodeCommand(response), authorizationId, nonce, sharedSecret);
             } catch (e) {
-                console.log("Command failed", decrypted.toString("hex"), e);
-                this.state = {
-                    key: "Initial"
-                };
-                if (e instanceof DecodingError) {
-                    return encryptCommand(encodeCommand(new ErrorCommand(e.code, e.commandId)), authorizationId, nonce, sharedSecret);
-                } else {
-                    return encryptCommand(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), authorizationId, nonce, sharedSecret);
-                }
+                console.log("Decryption failed", data.toString("hex"), e);
+                await sendAsync(encodeCommand(new ErrorCommand(K_ERROR_NOT_AUTHORIZED, 0)), KEYTURNER_GDIO_CHARACTERISTIC);
             }
-        } catch (e) {
-            console.log("Decryption failed", data.toString("hex"), e);
-            throw e;
+        } else {
+            throw new Error(`Data received on unexpected characteristic ${characteristicId} ${data.toString("hex")}`);
         }
     }
 
@@ -176,10 +188,17 @@ export class KeyturnerUserSpecificDataIoHandler {
                 DateTime.fromDate(now),
                 -now.getTimezoneOffset(),
                 this.config.get("dstMode") ?? 1,
-                true,
+                false,
                 this.config.get("fobAction1") ?? 1, // unlock
                 this.config.get("fobAction2") ?? 2, // lock
-                this.config.get("fobAction3")
+                this.config.get("fobAction3"),
+                false,
+                0,
+                false,
+                FIRMWARE_VERSION,
+                HARDWARE_VERSION,
+                1,
+                37
             );
         } else if (command instanceof SetConfigCommand) {
             this.config.setName(command.name);
@@ -208,7 +227,15 @@ export class KeyturnerUserSpecificDataIoHandler {
         } else if (command instanceof RequestAdvancedConfigCommand) {
             // TODO: implement
 
-            return new AdvancedConfigCommand();
+            return new AdvancedConfigCommand(
+                720,
+                0,
+                0,
+                0,
+                0,
+                0
+
+            );
         } else if (command instanceof SetAdvancedConfigCommand) {
             // TODO: implement
 
