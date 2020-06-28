@@ -59,7 +59,7 @@ export class ConfigCommand extends Command {
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== 63 && buffer.length !== 74) {
+        if (buffer.length !== 63 && buffer.length !== 65 && buffer.length !== 72 && buffer.length !== 74) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
@@ -100,15 +100,19 @@ export class ConfigCommand extends Command {
             ofs += 1;
             this.advertisingMode = buffer.readUInt8(ofs);
             ofs += 1;
-            this.hasKeypad = buffer.readUInt8(ofs) === 1;
-            ofs += 1;
-            this.firmwareVersion = readUInt24BE(buffer, ofs);
-            ofs += 3;
-            this.hardwareRevision = buffer.readUInt16LE(ofs);
-            ofs += 2;
-            this.homekitStatus = buffer.readUInt8(ofs);
-            ofs += 1;
-            this.timezoneId = buffer.readUInt16LE(ofs);
+            if (buffer.length > 65) {
+                this.hasKeypad = buffer.readUInt8(ofs) === 1;
+                ofs += 1;
+                this.firmwareVersion = readUInt24BE(buffer, ofs);
+                ofs += 3;
+                this.hardwareRevision = buffer.readUInt16LE(ofs);
+                ofs += 2;
+                this.homekitStatus = buffer.readUInt8(ofs);
+                ofs += 1;
+                if (buffer.length > 72) {
+                    this.timezoneId = buffer.readUInt16LE(ofs);
+                }
+            }
         }
     }
 
@@ -152,16 +156,20 @@ export class ConfigCommand extends Command {
             ofs += 1;
             buffer.writeUInt8(this.advertisingMode ?? 0, ofs);
             ofs += 1;
-            buffer.writeUInt8(this.hasKeypad ?? false ? 1 : 0, ofs);
-            ofs += 1;
-            writeUInt24BE(buffer, this.firmwareVersion ?? 0, ofs);
-            ofs += 3;
-            buffer.writeUInt16LE(this.hardwareRevision ?? 0, ofs);
-            ofs += 2;
-            buffer.writeUInt8(this.homekitStatus ?? 0, ofs);
-            ofs += 1;
-            buffer.writeUInt16LE(this.timezoneId ?? 0, ofs);
-            ofs += 2;
+            if (this.hasKeypad !== undefined) {
+                buffer.writeUInt8(this.hasKeypad ?? false ? 1 : 0, ofs);
+                ofs += 1;
+                writeUInt24BE(buffer, this.firmwareVersion ?? 0, ofs);
+                ofs += 3;
+                buffer.writeUInt16LE(this.hardwareRevision ?? 0, ofs);
+                ofs += 2;
+                buffer.writeUInt8(this.homekitStatus ?? 0, ofs);
+                ofs += 1;
+                if (this.timezoneId !== undefined) {
+                    buffer.writeUInt16LE(this.timezoneId ?? 0, ofs);
+                    ofs += 2;
+                }
+            }
         }
         return buffer.slice(0, ofs);
     }
@@ -187,11 +195,15 @@ export class ConfigCommand extends Command {
         if (this.singleLock !== undefined) {
             str += "\n  singleLock: " + this.singleLock;
             str += "\n  advertisingMode: " + "0x" + (this.advertisingMode ?? 0).toString(16).padStart(2, "0");
-            str += "\n  hasKeypad: " + this.hasKeypad ?? false;
-            str += "\n  firmwareVersion: " + "0x" + (this.firmwareVersion ?? 0).toString(16).padStart(6, "0");
-            str += "\n  hardwareRevision: " + "0x" + (this.hardwareRevision ?? 0).toString(16).padStart(4, "0");
-            str += "\n  homekitStatus: " + "0x" + (this.homekitStatus ?? 0).toString(16).padStart(2, "0");
-            str += "\n  timezoneId: " + "0x" + (this.timezoneId ?? 0).toString(16).padStart(4, "0");
+            if (this.hasKeypad !== undefined) {
+                str += "\n  hasKeypad: " + this.hasKeypad ?? false;
+                str += "\n  firmwareVersion: " + "0x" + (this.firmwareVersion ?? 0).toString(16).padStart(6, "0");
+                str += "\n  hardwareRevision: " + "0x" + (this.hardwareRevision ?? 0).toString(16).padStart(4, "0");
+                str += "\n  homekitStatus: " + "0x" + (this.homekitStatus ?? 0).toString(16).padStart(2, "0");
+                if (this.timezoneId !== undefined) {
+                    str += "\n  timezoneId: " + "0x" + (this.timezoneId ?? 0).toString(16).padStart(4, "0");
+                }
+            }
         }
         str += "\n}";
         return str;

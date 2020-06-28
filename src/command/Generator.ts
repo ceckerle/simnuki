@@ -135,7 +135,7 @@ fobAction2,u,1
 fobAction3,u,1
 ?singleLock,b
 advertisingMode,u,1
-timezoneId,u,2
+?timezoneId,u,2
 #nonce,B,32
 securityPin,u,2
 !RequestConfig,14,CommandNeedsChallenge
@@ -159,11 +159,11 @@ fobAction2,u,1
 fobAction3,u,1
 ?singleLock,b
 advertisingMode,u,1
-hasKeypad,b
+?hasKeypad,b
 firmwareVersion,U,3
 hardwareRevision,u,2
 homekitStatus,u,1
-timezoneId,u,2
+?timezoneId,u,2
 !SetSecurityPin,19,CommandNeedsSecurityPin
 pin,u,2
 nonce,B,32
@@ -220,15 +220,15 @@ doubleButtonPressAction,u,1
 detachedCylinder,b
 batteryType,u,1
 automaticBatteryTypeDetection,b
-unlatchDuration,u,1
-autoLockTimeout,u,2
-autoUnlockDisabled,b
+?unlatchDuration,u,1
+?autoLockTimeout,u,2
+?autoUnlockDisabled,b
 nightmodeEnabled,b
 nightmodeStartTime,T
 nightmodeEndTime,T
 nightmodeAutoLockEnabled,b
 nightmodeAutoUnlockDisabled,b
-nightmodeImmediateLockOnStart,b
+?nightmodeImmediateLockOnStart,b
 #nonce,B,32
 securityPin,u,2
 !RequestAdvancedConfig,36,CommandNeedsChallenge
@@ -245,15 +245,15 @@ doubleButtonPressAction,u,1
 detachedCylinder,b
 batteryType,u,1
 automaticBatteryTypeDetection,b
-unlatchDuration,u,1
-autoLockTimeout,u,2
-autoUnlockDisabled,b
+?unlatchDuration,u,1
+?autoLockTimeout,u,2
+?autoUnlockDisabled,b
 nightmodeEnabled,b
 nightmodeStartTime,T
 nightmodeEndTime,T
 nightmodeAutoLockEnabled,b
 nightmodeAutoUnlockDisabled,b
-nightmodeImmediateLockOnStart,b
+?nightmodeImmediateLockOnStart,b
 !AddTimeControlEntry,39,CommandNeedsSecurityPin
 weekdays,u,1
 time,T
@@ -406,12 +406,13 @@ function buildCommands() {
         const id = parseInt(command[0][1], 16);
         const superClass = command[0].length > 2 ? command[0][2] : "Command";
         const props = command.slice(1).map(getPropInfo);
-        let optIdx = props.findIndex((p) => p.optional);
-        if (optIdx === -1) optIdx = props.length;
+        const optIdxs = props.map((p, i) => [p.optional, i] as [boolean, number]).filter((t) => t[0]).map((t) => t[1]);
+        const optIdx = optIdxs.length > 0 ? optIdxs[0] : props.length;
         let trailIdx = props.findIndex((p) => p.trailer);
         if (trailIdx === -1) trailIdx = props.length;
-        const minBytes = props.slice(0, optIdx).concat(props.slice(trailIdx)).reduce((sum, p) => sum + p.bytes, 0);
-        const maxBytes = props.slice(optIdx, trailIdx).reduce((sum, p) => sum + p.bytes, 0) + minBytes;
+        const maxBytes = props.reduce((sum, p) => sum + p.bytes, 0);
+        const trailerBytes = props.slice(trailIdx).reduce((sum, p) => sum + p.bytes, 0);
+        const optBytes = optIdxs.map((optIdx) => props.slice(0, optIdx).reduce((sum, p) => sum + p.bytes, 0) + trailerBytes);
 
         consts += `export const ${constName} = 0x${id.toString(16).padStart(2, "0")};\n`;
         constClassPairs.push([constName, name]);
@@ -429,23 +430,23 @@ ${props.map((p, i) =>
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== ${minBytes}${minBytes !== maxBytes ? ` && buffer.length !== ${maxBytes}` : ""}) {
+        if (${optBytes.map((b) => `buffer.length !== ${b} && `).join("")}buffer.length !== ${maxBytes}) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         ${props.length > 1 ? "let" : "const"} ofs = 0;
-${props.map((p, i) => buildDecodeProp(props, p, optIdx, trailIdx, minBytes, i)).join("\n")}
+${props.map((p, i) => buildDecodeProp(props, p, trailIdx, trailerBytes, i)).join("\n")}
     }
 
     encode(): Buffer {
         const buffer = Buffer.alloc(${maxBytes});
         ${props.length > 1 ? "let" : "const"} ofs = 0;
-${props.map((p, i) => buildEncodeProp(props, p, optIdx, trailIdx, minBytes, i)).join("\n")}
-        return buffer${minBytes !== maxBytes ? ".slice(0, ofs)" : ""};
+${props.map((p, i) => buildEncodeProp(props, p, trailIdx, trailerBytes, i)).join("\n")}
+        return buffer${optIdxs.length > 0 ? ".slice(0, ofs)" : ""};
     }
     
     toString(): string {
         let str = "${name} {";
-${props.map((p, i) => buildStringProp(props, p, optIdx, trailIdx, minBytes, i)).join("\n")}
+${props.map((p, i) => buildStringProp(props, p, trailIdx, trailerBytes, i)).join("\n")}
         str += "\\n}";
         return str;
     }
@@ -537,61 +538,52 @@ interface PropDef {
     str: string;
 }
 
-function buildDecodeProp(props: PropDef[], p: PropDef, optIdx: number, trailIdx: number, minBytes: number, i: number) {
-    let ind = " ".repeat(i > optIdx && i < trailIdx ? 12 : 8);
+function buildProp(props: PropDef[], p: PropDef, trailIdx: number, trailBytes: number, i: number, ofs: number,
+                   check: (p: PropDef, preBytes: number) => string, op: (p: PropDef, opt: boolean) => string) {
+    const pre = props.slice(0, i);
+    const preOpt = pre.filter((p) => p.optional).length;
+    const preBytes = pre.reduce((sum, p) => sum + p.bytes, 0);
+    const depth = 8 + (i < trailIdx ? preOpt * 4 : 0);
+    let ind = " ".repeat(depth);
     let s = "";
 
     if (p.optional) {
-        s += `${ind}if (buffer.length > ${minBytes}) {\n`;
-        ind = " ".repeat(12);
+        s += `${ind}if (${check(p, preBytes + trailBytes)}) {\n`;
+        ind = " ".repeat(depth + 4);
     }
-    s += `${ind}this.${p.name} = ${p.dec};`;
-    if (i < props.length - 1) {
+    s += `${ind}${op(p, preOpt > 0 && i < trailIdx)};`;
+    if (ofs > 0 && i < props.length - 1 || ofs === 2 && (preOpt > 0 || p.optional)) {
         s += `\n${ind}ofs += ${p.bytes};`;
     }
-    if (optIdx < trailIdx && i === trailIdx - 1) {
-        ind = " ".repeat(8);
-        s += `\n${ind}}`;
+    if (i === trailIdx - 1) {
+        for (let d = preOpt + (p.optional ? 1 : 0); d > 0; d--) {
+            ind = " ".repeat(8 + (d - 1) * 4);
+            s += `\n${ind}}`;
+        }
     }
 
     return s;
 }
 
-function buildEncodeProp(props: PropDef[], p: PropDef, optIdx: number, trailIdx: number, minBytes: number, i: number) {
-    let ind = " ".repeat(i > optIdx && i < trailIdx ? 12 : 8);
-    let s = "";
-
-    if (p.optional) {
-        s += `${ind}if (this.${p.name} !== undefined) {\n`;
-        ind = " ".repeat(12);
-    }
-    s += `${ind}${p.enc.replace("@", i > optIdx && i < trailIdx ? `this.${p.name} ?? ${p.init}` : `this.${p.name}`)};`;
-    if (i < props.length - 1 || optIdx < props.length) {
-        s += `\n${ind}ofs += ${p.bytes};`;
-    }
-    if (optIdx < trailIdx && i === trailIdx - 1) {
-        ind = " ".repeat(8);
-        s += `\n${ind}}`;
-    }
-
-    return s;
+function buildDecodeProp(props: PropDef[], p: PropDef, trailIdx: number, trailBytes: number, i: number) {
+    return buildProp(props, p, trailIdx, trailBytes, i, 1,
+        (p: PropDef, preBytes: number) => `buffer.length > ${preBytes}`,
+        (p: PropDef) => `this.${p.name} = ${p.dec}`
+    );
 }
 
-function buildStringProp(props: PropDef[], p: PropDef, optIdx: number, trailIdx: number, minBytes: number, i: number) {
-    let ind = " ".repeat(i > optIdx && i < trailIdx ? 12 : 8);
-    let s = "";
+function buildEncodeProp(props: PropDef[], p: PropDef, trailIdx: number, trailBytes: number, i: number) {
+    return buildProp(props, p, trailIdx, trailBytes, i, 2,
+        (p: PropDef) => `this.${p.name} !== undefined`,
+        (p: PropDef, opt: boolean) => `${p.enc.replace("@", opt ? `this.${p.name} ?? ${p.init}` : `this.${p.name}`)}`
+    );
+}
 
-    if (p.optional) {
-        s += `${ind}if (this.${p.name} !== undefined) {\n`;
-        ind = " ".repeat(12);
-    }
-    s += `${ind}str += "\\n  ${p.name}: " + ${p.str.replace("@", i > optIdx && i < trailIdx ? `this.${p.name} ?? ${p.init}` : `this.${p.name}`)};`;
-    if (optIdx < trailIdx && i === trailIdx - 1) {
-        ind = " ".repeat(8);
-        s += `\n${ind}}`;
-    }
-
-    return s;
+function buildStringProp(props: PropDef[], p: PropDef, trailIdx: number, trailBytes: number, i: number) {
+    return buildProp(props, p, trailIdx, trailBytes, i, 0,
+        (p: PropDef) => `this.${p.name} !== undefined`,
+        (p: PropDef, opt: boolean) => `str += "\\n  ${p.name}: " + ${p.str.replace("@", opt ? `this.${p.name} ?? ${p.init}` : `this.${p.name}`)}`
+    );
 }
 
 function camelCase(str: string) {

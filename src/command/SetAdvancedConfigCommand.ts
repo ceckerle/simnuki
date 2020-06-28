@@ -54,7 +54,7 @@ export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== 42 && buffer.length !== 60) {
+        if (buffer.length !== 42 && buffer.length !== 48 && buffer.length !== 49 && buffer.length !== 51 && buffer.length !== 59 && buffer.length !== 60) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
@@ -79,24 +79,32 @@ export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
             ofs += 1;
             this.automaticBatteryTypeDetection = buffer.readUInt8(ofs) === 1;
             ofs += 1;
-            this.unlatchDuration = buffer.readUInt8(ofs);
-            ofs += 1;
-            this.autoLockTimeout = buffer.readUInt16LE(ofs);
-            ofs += 2;
-            this.autoUnlockDisabled = buffer.readUInt8(ofs) === 1;
-            ofs += 1;
-            this.nightmodeEnabled = buffer.readUInt8(ofs) === 1;
-            ofs += 1;
-            this.nightmodeStartTime = Time.decode(buffer, ofs);
-            ofs += 2;
-            this.nightmodeEndTime = Time.decode(buffer, ofs);
-            ofs += 2;
-            this.nightmodeAutoLockEnabled = buffer.readUInt8(ofs) === 1;
-            ofs += 1;
-            this.nightmodeAutoUnlockDisabled = buffer.readUInt8(ofs) === 1;
-            ofs += 1;
-            this.nightmodeImmediateLockOnStart = buffer.readUInt8(ofs) === 1;
-            ofs += 1;
+            if (buffer.length > 48) {
+                this.unlatchDuration = buffer.readUInt8(ofs);
+                ofs += 1;
+                if (buffer.length > 49) {
+                    this.autoLockTimeout = buffer.readUInt16LE(ofs);
+                    ofs += 2;
+                    if (buffer.length > 51) {
+                        this.autoUnlockDisabled = buffer.readUInt8(ofs) === 1;
+                        ofs += 1;
+                        this.nightmodeEnabled = buffer.readUInt8(ofs) === 1;
+                        ofs += 1;
+                        this.nightmodeStartTime = Time.decode(buffer, ofs);
+                        ofs += 2;
+                        this.nightmodeEndTime = Time.decode(buffer, ofs);
+                        ofs += 2;
+                        this.nightmodeAutoLockEnabled = buffer.readUInt8(ofs) === 1;
+                        ofs += 1;
+                        this.nightmodeAutoUnlockDisabled = buffer.readUInt8(ofs) === 1;
+                        ofs += 1;
+                        if (buffer.length > 59) {
+                            this.nightmodeImmediateLockOnStart = buffer.readUInt8(ofs) === 1;
+                            ofs += 1;
+                        }
+                    }
+                }
+            }
         }
         this.nonce = buffer.slice(ofs, ofs + 32);
         ofs += 32;
@@ -127,24 +135,32 @@ export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
             ofs += 1;
             buffer.writeUInt8(this.automaticBatteryTypeDetection ?? false ? 1 : 0, ofs);
             ofs += 1;
-            buffer.writeUInt8(this.unlatchDuration ?? 0, ofs);
-            ofs += 1;
-            buffer.writeUInt16LE(this.autoLockTimeout ?? 0, ofs);
-            ofs += 2;
-            buffer.writeUInt8(this.autoUnlockDisabled ?? false ? 1 : 0, ofs);
-            ofs += 1;
-            buffer.writeUInt8(this.nightmodeEnabled ?? false ? 1 : 0, ofs);
-            ofs += 1;
-            (this.nightmodeStartTime ?? new Time(0, 0)).encode(buffer, ofs);
-            ofs += 2;
-            (this.nightmodeEndTime ?? new Time(0, 0)).encode(buffer, ofs);
-            ofs += 2;
-            buffer.writeUInt8(this.nightmodeAutoLockEnabled ?? false ? 1 : 0, ofs);
-            ofs += 1;
-            buffer.writeUInt8(this.nightmodeAutoUnlockDisabled ?? false ? 1 : 0, ofs);
-            ofs += 1;
-            buffer.writeUInt8(this.nightmodeImmediateLockOnStart ?? false ? 1 : 0, ofs);
-            ofs += 1;
+            if (this.unlatchDuration !== undefined) {
+                buffer.writeUInt8(this.unlatchDuration ?? 0, ofs);
+                ofs += 1;
+                if (this.autoLockTimeout !== undefined) {
+                    buffer.writeUInt16LE(this.autoLockTimeout ?? 0, ofs);
+                    ofs += 2;
+                    if (this.autoUnlockDisabled !== undefined) {
+                        buffer.writeUInt8(this.autoUnlockDisabled ?? false ? 1 : 0, ofs);
+                        ofs += 1;
+                        buffer.writeUInt8(this.nightmodeEnabled ?? false ? 1 : 0, ofs);
+                        ofs += 1;
+                        (this.nightmodeStartTime ?? new Time(0, 0)).encode(buffer, ofs);
+                        ofs += 2;
+                        (this.nightmodeEndTime ?? new Time(0, 0)).encode(buffer, ofs);
+                        ofs += 2;
+                        buffer.writeUInt8(this.nightmodeAutoLockEnabled ?? false ? 1 : 0, ofs);
+                        ofs += 1;
+                        buffer.writeUInt8(this.nightmodeAutoUnlockDisabled ?? false ? 1 : 0, ofs);
+                        ofs += 1;
+                        if (this.nightmodeImmediateLockOnStart !== undefined) {
+                            buffer.writeUInt8(this.nightmodeImmediateLockOnStart ?? false ? 1 : 0, ofs);
+                            ofs += 1;
+                        }
+                    }
+                }
+            }
         }
         this.nonce.copy(buffer, ofs);
         ofs += 32;
@@ -166,15 +182,23 @@ export class SetAdvancedConfigCommand extends CommandNeedsSecurityPin {
             str += "\n  detachedCylinder: " + this.detachedCylinder ?? false;
             str += "\n  batteryType: " + "0x" + (this.batteryType ?? 0).toString(16).padStart(2, "0");
             str += "\n  automaticBatteryTypeDetection: " + this.automaticBatteryTypeDetection ?? false;
-            str += "\n  unlatchDuration: " + "0x" + (this.unlatchDuration ?? 0).toString(16).padStart(2, "0");
-            str += "\n  autoLockTimeout: " + "0x" + (this.autoLockTimeout ?? 0).toString(16).padStart(4, "0");
-            str += "\n  autoUnlockDisabled: " + this.autoUnlockDisabled ?? false;
-            str += "\n  nightmodeEnabled: " + this.nightmodeEnabled ?? false;
-            str += "\n  nightmodeStartTime: " + (this.nightmodeStartTime ?? new Time(0, 0)).toString();
-            str += "\n  nightmodeEndTime: " + (this.nightmodeEndTime ?? new Time(0, 0)).toString();
-            str += "\n  nightmodeAutoLockEnabled: " + this.nightmodeAutoLockEnabled ?? false;
-            str += "\n  nightmodeAutoUnlockDisabled: " + this.nightmodeAutoUnlockDisabled ?? false;
-            str += "\n  nightmodeImmediateLockOnStart: " + this.nightmodeImmediateLockOnStart ?? false;
+            if (this.unlatchDuration !== undefined) {
+                str += "\n  unlatchDuration: " + "0x" + (this.unlatchDuration ?? 0).toString(16).padStart(2, "0");
+                if (this.autoLockTimeout !== undefined) {
+                    str += "\n  autoLockTimeout: " + "0x" + (this.autoLockTimeout ?? 0).toString(16).padStart(4, "0");
+                    if (this.autoUnlockDisabled !== undefined) {
+                        str += "\n  autoUnlockDisabled: " + this.autoUnlockDisabled ?? false;
+                        str += "\n  nightmodeEnabled: " + this.nightmodeEnabled ?? false;
+                        str += "\n  nightmodeStartTime: " + (this.nightmodeStartTime ?? new Time(0, 0)).toString();
+                        str += "\n  nightmodeEndTime: " + (this.nightmodeEndTime ?? new Time(0, 0)).toString();
+                        str += "\n  nightmodeAutoLockEnabled: " + this.nightmodeAutoLockEnabled ?? false;
+                        str += "\n  nightmodeAutoUnlockDisabled: " + this.nightmodeAutoUnlockDisabled ?? false;
+                        if (this.nightmodeImmediateLockOnStart !== undefined) {
+                            str += "\n  nightmodeImmediateLockOnStart: " + this.nightmodeImmediateLockOnStart ?? false;
+                        }
+                    }
+                }
+            }
         }
         str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
         str += "\n  securityPin: " + "0x" + this.securityPin.toString(16).padStart(4, "0");

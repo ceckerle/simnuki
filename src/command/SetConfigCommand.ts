@@ -48,7 +48,7 @@ export class SetConfigCommand extends CommandNeedsSecurityPin {
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== 85 && buffer.length !== 89) {
+        if (buffer.length !== 85 && buffer.length !== 87 && buffer.length !== 89) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
@@ -83,8 +83,10 @@ export class SetConfigCommand extends CommandNeedsSecurityPin {
             ofs += 1;
             this.advertisingMode = buffer.readUInt8(ofs);
             ofs += 1;
-            this.timezoneId = buffer.readUInt16LE(ofs);
-            ofs += 2;
+            if (buffer.length > 87) {
+                this.timezoneId = buffer.readUInt16LE(ofs);
+                ofs += 2;
+            }
         }
         this.nonce = buffer.slice(ofs, ofs + 32);
         ofs += 32;
@@ -125,8 +127,10 @@ export class SetConfigCommand extends CommandNeedsSecurityPin {
             ofs += 1;
             buffer.writeUInt8(this.advertisingMode ?? 0, ofs);
             ofs += 1;
-            buffer.writeUInt16LE(this.timezoneId ?? 0, ofs);
-            ofs += 2;
+            if (this.timezoneId !== undefined) {
+                buffer.writeUInt16LE(this.timezoneId ?? 0, ofs);
+                ofs += 2;
+            }
         }
         this.nonce.copy(buffer, ofs);
         ofs += 32;
@@ -153,7 +157,9 @@ export class SetConfigCommand extends CommandNeedsSecurityPin {
         if (this.singleLock !== undefined) {
             str += "\n  singleLock: " + this.singleLock;
             str += "\n  advertisingMode: " + "0x" + (this.advertisingMode ?? 0).toString(16).padStart(2, "0");
-            str += "\n  timezoneId: " + "0x" + (this.timezoneId ?? 0).toString(16).padStart(4, "0");
+            if (this.timezoneId !== undefined) {
+                str += "\n  timezoneId: " + "0x" + (this.timezoneId ?? 0).toString(16).padStart(4, "0");
+            }
         }
         str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
         str += "\n  securityPin: " + "0x" + this.securityPin.toString(16).padStart(4, "0");
