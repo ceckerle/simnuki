@@ -25,7 +25,7 @@ export class LogEntryCommand extends Command {
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length < 20) {
+        if (buffer.length < 48) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;

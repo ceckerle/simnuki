@@ -94,8 +94,8 @@ doorSensorState,u,1
 lockAction,u,1
 appId,u,4
 flags,u,1
-nameSuffix,s,20
-nonce,B,32
+?nameSuffix,s,20
+#nonce,B,32
 !Status,e
 status,u,1
 !MostRecentCommand,f
@@ -133,10 +133,10 @@ dstMode,b
 fobAction1,u,1
 fobAction2,u,1
 fobAction3,u,1
-singleLock,b
+?singleLock,b
 advertisingMode,u,1
 timezoneId,u,2
-nonce,B,32
+#nonce,B,32
 securityPin,u,2
 !RequestConfig,14,CommandNeedsChallenge
 nonce,B,32
@@ -157,7 +157,7 @@ hasFob,b
 fobAction1,u,1
 fobAction2,u,1
 fobAction3,u,1
-singleLock,b
+?singleLock,b
 advertisingMode,u,1
 hasKeypad,b
 firmwareVersion,U,3
@@ -214,7 +214,7 @@ unlockedPositionOffsetDegrees,i,2
 lockedPositionOffsetDegrees,i,2
 singleLockedPositionOffsetDegrees,i,2
 unlockedToLockedTransitionOffsetDegrees,i,2
-lockngoTimeout,u,1
+?lockngoTimeout,u,1
 singleButtonPressAction,u,1
 doubleButtonPressAction,u,1
 detachedCylinder,b
@@ -229,7 +229,7 @@ nightmodeEndTime,T
 nightmodeAutoLockEnabled,b
 nightmodeAutoUnlockDisabled,b
 nightmodeImmediateLockOnStart,b
-nonce,B,32
+#nonce,B,32
 securityPin,u,2
 !RequestAdvancedConfig,36,CommandNeedsChallenge
 nonce,B,32
@@ -239,7 +239,7 @@ unlockedPositionOffsetDegrees,i,2
 lockedPositionOffsetDegrees,i,2
 singleLockedPositionOffsetDegrees,i,2
 unlockedToLockedTransitionOffsetDegrees,i,2
-lockngoTimeout,u,1
+?lockngoTimeout,u,1
 singleButtonPressAction,u,1
 doubleButtonPressAction,u,1
 detachedCylinder,b
@@ -393,13 +393,25 @@ function buildCommands() {
     let consts = "";
     const constClassPairs: [string, string][] = [];
 
+    const utilFunctions: string[] = [];
+    readFileSync("src/command/Util.ts").toString("utf-8")
+        .replace(/export function (\w+)/g, (substring, fn) => {
+            utilFunctions.push(fn);
+            return substring;
+        });
+
     for (const command of commands) {
         const name = `${command[0][0]}Command`;
         const constName = `CMD_${camelCase(command[0][0])}`;
         const id = parseInt(command[0][1], 16);
         const superClass = command[0].length > 2 ? command[0][2] : "Command";
         const props = command.slice(1).map(getPropInfo);
-        const totalBytes = props.filter((p) => !isNaN(p.bytes)).reduce((sum, p) => sum + p.bytes, 0);
+        let optIdx = props.findIndex((p) => p.optional);
+        if (optIdx === -1) optIdx = props.length;
+        let trailIdx = props.findIndex((p) => p.trailer);
+        if (trailIdx === -1) trailIdx = props.length;
+        const minBytes = props.slice(0, optIdx).concat(props.slice(trailIdx)).reduce((sum, p) => sum + p.bytes, 0);
+        const maxBytes = props.slice(optIdx, trailIdx).reduce((sum, p) => sum + p.bytes, 0) + minBytes;
 
         consts += `export const ${constName} = 0x${id.toString(16).padStart(2, "0")};\n`;
         constClassPairs.push([constName, name]);
@@ -407,51 +419,40 @@ function buildCommands() {
         const c = `export class ${name} extends ${superClass} {
     
     readonly id = ${constName};
-${props.map((p) => 
-`    ${p.name}: ${p.type};`).join("\n")}
+${props.map((p, i) => 
+`    ${p.name}${i >= optIdx && i < trailIdx ? "?" : ""}: ${p.type};`).join("\n")}
 
     constructor(${props.map((p) => `${p.name}?: ${p.type}`).join(", ")}) {
         super();
-${props.map((p) => 
-`        this.${p.name} = ${p.name} ?? ${p.init};`).join("\n")}
+${props.map((p, i) => 
+`        this.${p.name} = ${p.name}${i < optIdx || i >= trailIdx ? " ?? " + p.init : ""};`).join("\n")}
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== ${totalBytes}) {
+        if (buffer.length !== ${minBytes}${minBytes !== maxBytes ? ` && buffer.length !== ${maxBytes}` : ""}) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         ${props.length > 1 ? "let" : "const"} ofs = 0;
-${props.map((p, i) => 
-`        this.${p.name} = ${p.dec};` + (i < props.length - 1 ? `
-        ofs += ${p.bytes};` : "")).join("\n")}
+${props.map((p, i) => buildDecodeProp(props, p, optIdx, trailIdx, minBytes, i)).join("\n")}
     }
 
     encode(): Buffer {
-        const buffer = Buffer.alloc(${totalBytes});
+        const buffer = Buffer.alloc(${maxBytes});
         ${props.length > 1 ? "let" : "const"} ofs = 0;
-${props.map((p, i) =>
-`        ${p.enc};` + (i < props.length - 1 ? `
-        ofs += ${p.bytes};` : "")).join("\n")}
-        return buffer;
+${props.map((p, i) => buildEncodeProp(props, p, optIdx, trailIdx, minBytes, i)).join("\n")}
+        return buffer${minBytes !== maxBytes ? ".slice(0, ofs)" : ""};
     }
     
     toString(): string {
         let str = "${name} {";
-${props.map((p) => 
-`        str += "\\n  ${p.name}: " + ${p.str};`).join("\n")}
+${props.map((p, i) => buildStringProp(props, p, optIdx, trailIdx, minBytes, i)).join("\n")}
         str += "\\n}";
         return str;
     }
     
 }
-`;
+`.replace(/\((this\.[a-zA-Z0-9]+)\)/g, "$1");
 
-        const utilFunctions: string[] = [];
-        readFileSync("src/command/Util.ts").toString("utf-8")
-            .replace(/export function (\w+)/g, (substring, fn) => {
-            utilFunctions.push(fn);
-            return substring;
-        });
         const usedUtilFunctions: string[] = [];
         for (const fn of utilFunctions) {
             if (c.indexOf(`${fn}(`) !== -1) {
@@ -524,6 +525,75 @@ export function encodeCommand(command: Command): Buffer {
 
 }
 
+interface PropDef {
+    optional: boolean;
+    trailer: boolean;
+    name: string;
+    bytes: number;
+    type: string;
+    init: string;
+    enc: string;
+    dec: string;
+    str: string;
+}
+
+function buildDecodeProp(props: PropDef[], p: PropDef, optIdx: number, trailIdx: number, minBytes: number, i: number) {
+    let ind = " ".repeat(i > optIdx && i < trailIdx ? 12 : 8);
+    let s = "";
+
+    if (p.optional) {
+        s += `${ind}if (buffer.length > ${minBytes}) {\n`;
+        ind = " ".repeat(12);
+    }
+    s += `${ind}this.${p.name} = ${p.dec};`;
+    if (i < props.length - 1) {
+        s += `\n${ind}ofs += ${p.bytes};`;
+    }
+    if (optIdx < trailIdx && i === trailIdx - 1) {
+        ind = " ".repeat(8);
+        s += `\n${ind}}`;
+    }
+
+    return s;
+}
+
+function buildEncodeProp(props: PropDef[], p: PropDef, optIdx: number, trailIdx: number, minBytes: number, i: number) {
+    let ind = " ".repeat(i > optIdx && i < trailIdx ? 12 : 8);
+    let s = "";
+
+    if (p.optional) {
+        s += `${ind}if (this.${p.name} !== undefined) {\n`;
+        ind = " ".repeat(12);
+    }
+    s += `${ind}${p.enc.replace("@", i > optIdx && i < trailIdx ? `this.${p.name} ?? ${p.init}` : `this.${p.name}`)};`;
+    if (i < props.length - 1 || optIdx < props.length) {
+        s += `\n${ind}ofs += ${p.bytes};`;
+    }
+    if (optIdx < trailIdx && i === trailIdx - 1) {
+        ind = " ".repeat(8);
+        s += `\n${ind}}`;
+    }
+
+    return s;
+}
+
+function buildStringProp(props: PropDef[], p: PropDef, optIdx: number, trailIdx: number, minBytes: number, i: number) {
+    let ind = " ".repeat(i > optIdx && i < trailIdx ? 12 : 8);
+    let s = "";
+
+    if (p.optional) {
+        s += `${ind}if (this.${p.name} !== undefined) {\n`;
+        ind = " ".repeat(12);
+    }
+    s += `${ind}str += "\\n  ${p.name}: " + ${p.str.replace("@", i > optIdx && i < trailIdx ? `this.${p.name} ?? ${p.init}` : `this.${p.name}`)};`;
+    if (optIdx < trailIdx && i === trailIdx - 1) {
+        ind = " ".repeat(8);
+        s += `\n${ind}}`;
+    }
+
+    return s;
+}
+
 function camelCase(str: string) {
     let cc = "";
     for (let i = 0; i < str.length; i++) {
@@ -540,35 +610,37 @@ function isUpperCase(str: string) {
     return str === str.toUpperCase();
 }
 
-function getPropInfo(prop: string[]) {
-    const name = prop[0];
+function getPropInfo(prop: string[]): PropDef {
+    const optional = prop[0].startsWith("?");
+    const trailer = prop[0].startsWith("#");
+    const name = prop[0].substring(optional || trailer ? 1 : 0);
     const t = prop[1];
     let bytes = prop.length > 1 ? parseInt(prop[2], 10) : 0;
     let type: string;
     let init: string;
     let dec: string;
     let enc: string;
-    let str = `this.${name}`;
+    let str = `@`;
     switch (t) {
         case "b":
             bytes = 1;
             type = "boolean";
             init = "false";
             dec = "buffer.readUInt8(ofs) === 1";
-            enc = `buffer.writeUInt8(this.${name} === true ? 1 : 0, ofs)`;
+            enc = `buffer.writeUInt8(@ ? 1 : 0, ofs)`;
             break;
         case "B":
             type = "Buffer";
             init = `Buffer.alloc(${bytes})`;
             dec = `buffer.slice(ofs, ofs + ${bytes})`;
-            enc = `this.${name}.copy(buffer, ofs)`;
-            str = `"0x" + this.${name}.toString("hex")`
+            enc = `(@).copy(buffer, ofs)`;
+            str = `"0x" + (@).toString("hex")`
             break;
         case "s":
             type = "string";
             init = `""`;
             dec = `readString(buffer, ofs, ${bytes})`;
-            enc = `writeString(buffer, this.${name}, ofs, ${bytes})`;
+            enc = `writeString(buffer, @, ofs, ${bytes})`;
             break;
         case "u":
         case "U":
@@ -580,16 +652,16 @@ function getPropInfo(prop: string[]) {
                 case 2:
                 case 4:
                     dec = `buffer.read${t.toLocaleLowerCase() === "u" ? "U" : ""}Int${bytes * 8}${bytes === 1 ? "" : (isUpperCase(t) ? "BE" : "LE")}(ofs)`;
-                    enc = `buffer.write${t.toLocaleLowerCase() === "u" ? "U" : ""}Int${bytes * 8}${bytes === 1 ? "" : (isUpperCase(t) ? "BE" : "LE")}(this.${name}, ofs)`;
+                    enc = `buffer.write${t.toLocaleLowerCase() === "u" ? "U" : ""}Int${bytes * 8}${bytes === 1 ? "" : (isUpperCase(t) ? "BE" : "LE")}(@, ofs)`;
                     break;
                 case 3:
                     dec = `read${t.toLocaleLowerCase() === "u" ? "U" : ""}Int${bytes * 8}${isUpperCase(t) ? "BE" : "LE"}(buffer, ofs)`;
-                    enc = `write${t.toLocaleLowerCase() === "u" ? "U" : ""}Int${bytes * 8}${isUpperCase(t) ? "BE" : "LE"}(buffer, this.${name}, ofs)`;
+                    enc = `write${t.toLocaleLowerCase() === "u" ? "U" : ""}Int${bytes * 8}${isUpperCase(t) ? "BE" : "LE"}(buffer, @, ofs)`;
                     break;
                 default:
                     throw new Error("Unsupported bytes for type int " + bytes);
             }
-            str = `"0x" + this.${name}.toString(16).padStart(${bytes * 2}, "0")`;
+            str = `"0x" + (@).toString(16).padStart(${bytes * 2}, "0")`;
             break;
         case "f":
             type = "number";
@@ -597,7 +669,7 @@ function getPropInfo(prop: string[]) {
             switch (bytes) {
                 case 4:
                     dec = `buffer.readFloatLE(ofs)`;
-                    enc = `buffer.writeFloatLE(this.${name}, ofs)`;
+                    enc = `buffer.writeFloatLE(@, ofs)`;
                     break;
                 default:
                     throw new Error("Unsupported bytes for type float " + bytes);
@@ -608,22 +680,24 @@ function getPropInfo(prop: string[]) {
             type = "DateTime";
             init = "new DateTime(0, 0, 0, 0, 0, 0)";
             dec = `DateTime.decode(buffer, ofs)`;
-            enc = `this.${name}.encode(buffer, ofs)`;
-            str = `this.${name}.toString()`;
+            enc = `(@).encode(buffer, ofs)`;
+            str = `(@).toString()`;
             break;
         case "T":
             bytes = 2;
             type = "Time";
             init = "new Time(0, 0)";
             dec = `Time.decode(buffer, ofs)`;
-            enc = `this.${name}.encode(buffer, ofs)`;
-            str = `this.${name}.toString()`
+            enc = `(@).encode(buffer, ofs)`;
+            str = `(@).toString()`
             break;
         default:
             throw new Error("Unsupported type " + prop[1]);
     }
 
     return {
+        optional,
+        trailer,
         name,
         type,
         bytes,

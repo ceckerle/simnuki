@@ -80,7 +80,7 @@ export class KeypadCodeCommand extends Command {
         ofs += 4;
         writeString(buffer, this.name, ofs, 20);
         ofs += 20;
-        buffer.writeUInt8(this.enabled === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.enabled ? 1 : 0, ofs);
         ofs += 1;
         this.dateCreated.encode(buffer, ofs);
         ofs += 7;
@@ -88,7 +88,7 @@ export class KeypadCodeCommand extends Command {
         ofs += 7;
         buffer.writeUInt16LE(this.lockCount, ofs);
         ofs += 2;
-        buffer.writeUInt8(this.timeLimited === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.timeLimited ? 1 : 0, ofs);
         ofs += 1;
         this.allowedFromDate.encode(buffer, ofs);
         ofs += 7;

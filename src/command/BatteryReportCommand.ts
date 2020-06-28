@@ -63,7 +63,7 @@ export class BatteryReportCommand extends Command {
         ofs += 2;
         buffer.writeUInt16LE(this.batteryVoltage, ofs);
         ofs += 2;
-        buffer.writeUInt8(this.criticalBatteryState === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.criticalBatteryState ? 1 : 0, ofs);
         ofs += 1;
         buffer.writeUInt8(this.locakAction, ofs);
         ofs += 1;

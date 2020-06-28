@@ -39,9 +39,9 @@ export class LogEntryCountCommand extends Command {
         ofs += 1;
         buffer.writeUInt16LE(this.count, ofs);
         ofs += 2;
-        buffer.writeUInt8(this.doorSensorEnabled === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.doorSensorEnabled ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.doorSensorLoggingEnabled === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.doorSensorLoggingEnabled ? 1 : 0, ofs);
         return buffer;
     }
     

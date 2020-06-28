@@ -5,7 +5,7 @@ import {
     FOB_ACTION_INTELLIGENT,
     FOB_ACTION_LOCK,
     FOB_ACTION_LOCKNGO, FOB_ACTION_NONE,
-    FOB_ACTION_UNLOCK, HARDWARE_VERSION,
+    FOB_ACTION_UNLOCK,
     LOCK_ACTION_FOB_ACTION_1,
     LOCK_ACTION_FOB_ACTION_2,
     LOCK_ACTION_FOB_ACTION_3, LOCK_ACTION_FULL_LOCK,
@@ -179,14 +179,7 @@ export class KeyturnerUserSpecificDataIoHandler {
                 true,
                 this.config.get("fobAction1") ?? 1, // unlock
                 this.config.get("fobAction2") ?? 2, // lock
-                this.config.get("fobAction3"),
-                this.config.get("singleLock"),
-                this.config.get("advertisingMode"),
-                false,
-                FIRMWARE_VERSION,
-                HARDWARE_VERSION,
-                0,
-                this.config.get("timezoneId") ?? 37
+                this.config.get("fobAction3")
             );
         } else if (command instanceof SetConfigCommand) {
             this.config.setName(command.name);
@@ -201,9 +194,6 @@ export class KeyturnerUserSpecificDataIoHandler {
             this.config.set("fobAction1", command.fobAction1);
             this.config.set("fobAction2", command.fobAction2);
             this.config.set("fobAction3", command.fobAction3);
-            this.config.set("singleLock", command.singleLock);
-            this.config.set("advertisingMode", command.advertisingMode);
-            this.config.set("timezoneId", command.timezoneId);
 
             if (this.config.getNukiState() === NUKI_STATE_UNINITIALIZED) {
                 this.config.setNukiState(NUKI_STATE_PAIRING_MODE);

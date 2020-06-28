@@ -50,7 +50,7 @@ export class UpdateTimeControlEntryCommand extends CommandNeedsSecurityPin {
         let ofs = 0;
         buffer.writeUInt8(this.entryId, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.enabled === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.enabled ? 1 : 0, ofs);
         ofs += 1;
         buffer.writeUInt8(this.weekdays, ofs);
         ofs += 1;

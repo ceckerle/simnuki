@@ -47,9 +47,9 @@ export class RequestLogEntriesCommand extends CommandNeedsSecurityPin {
         ofs += 4;
         buffer.writeUInt16LE(this.count, ofs);
         ofs += 2;
-        buffer.writeUInt8(this.sortOrder === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.sortOrder ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.totalCount === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.totalCount ? 1 : 0, ofs);
         ofs += 1;
         this.nonce.copy(buffer, ofs);
         ofs += 32;

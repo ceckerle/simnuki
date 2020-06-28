@@ -76,9 +76,9 @@ export class UpdateAuthorizationEntryCommand extends CommandNeedsSecurityPin {
         ofs += 32;
         buffer.writeUInt8(this.enabled, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.remoteAllowed === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.remoteAllowed ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.timeLimited === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.timeLimited ? 1 : 0, ofs);
         ofs += 1;
         this.allowedFromDate.encode(buffer, ofs);
         ofs += 7;

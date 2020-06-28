@@ -32,7 +32,7 @@ export class LockActionCommand extends CommandNeedsChallenge {
         ofs += 4;
         this.flags = buffer.readUInt8(ofs);
         ofs += 1;
-        if (buffer.length === 58) {
+        if (buffer.length > 38) {
             this.nameSuffix = readString(buffer, ofs, 20);
             ofs += 20;
         }
@@ -40,7 +40,7 @@ export class LockActionCommand extends CommandNeedsChallenge {
     }
 
     encode(): Buffer {
-        const buffer = Buffer.alloc(this.nameSuffix ? 58 : 38);
+        const buffer = Buffer.alloc(58);
         let ofs = 0;
         buffer.writeUInt8(this.lockAction, ofs);
         ofs += 1;
@@ -48,12 +48,13 @@ export class LockActionCommand extends CommandNeedsChallenge {
         ofs += 4;
         buffer.writeUInt8(this.flags, ofs);
         ofs += 1;
-        if (this.nameSuffix) {
+        if (this.nameSuffix !== undefined) {
             writeString(buffer, this.nameSuffix, ofs, 20);
             ofs += 20;
         }
         this.nonce.copy(buffer, ofs);
-        return buffer;
+        ofs += 32;
+        return buffer.slice(0, ofs);
     }
     
     toString(): string {
@@ -61,7 +62,9 @@ export class LockActionCommand extends CommandNeedsChallenge {
         str += "\n  lockAction: " + "0x" + this.lockAction.toString(16).padStart(2, "0");
         str += "\n  appId: " + "0x" + this.appId.toString(16).padStart(8, "0");
         str += "\n  flags: " + "0x" + this.flags.toString(16).padStart(2, "0");
-        str += "\n  nameSuffix: " + this.nameSuffix;
+        if (this.nameSuffix !== undefined) {
+            str += "\n  nameSuffix: " + this.nameSuffix;
+        }
         str += "\n  nonce: " + "0x" + this.nonce.toString("hex");
         str += "\n}";
         return str;

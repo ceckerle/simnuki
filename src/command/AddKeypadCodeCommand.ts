@@ -66,7 +66,7 @@ export class AddKeypadCodeCommand extends CommandNeedsSecurityPin {
         ofs += 4;
         writeString(buffer, this.name, ofs, 20);
         ofs += 20;
-        buffer.writeUInt8(this.timeLimited === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.timeLimited ? 1 : 0, ofs);
         ofs += 1;
         this.allowedFromDate.encode(buffer, ofs);
         ofs += 7;

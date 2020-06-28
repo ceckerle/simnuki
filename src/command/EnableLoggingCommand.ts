@@ -31,7 +31,7 @@ export class EnableLoggingCommand extends CommandNeedsSecurityPin {
     encode(): Buffer {
         const buffer = Buffer.alloc(35);
         let ofs = 0;
-        buffer.writeUInt8(this.enabled === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.enabled ? 1 : 0, ofs);
         ofs += 1;
         this.nonce.copy(buffer, ofs);
         ofs += 32;

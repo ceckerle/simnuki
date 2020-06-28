@@ -23,13 +23,13 @@ export class ConfigCommand extends Command {
     fobAction1: number;
     fobAction2: number;
     fobAction3: number;
-    singleLock: boolean;
-    advertisingMode: number;
-    hasKeypad: boolean;
-    firmwareVersion: number;
-    hardwareRevision: number;
-    homekitStatus: number;
-    timezoneId: number;
+    singleLock?: boolean;
+    advertisingMode?: number;
+    hasKeypad?: boolean;
+    firmwareVersion?: number;
+    hardwareRevision?: number;
+    homekitStatus?: number;
+    timezoneId?: number;
 
     constructor(nukiId?: number, name?: string, latitude?: number, longitude?: number, autoUnlatch?: boolean, pairingEnabled?: boolean, buttonEnabled?: boolean, ledEnabled?: boolean, ledBrightness?: number, currentTime?: DateTime, timezoneOffset?: number, dstMode?: boolean, hasFob?: boolean, fobAction1?: number, fobAction2?: number, fobAction3?: number, singleLock?: boolean, advertisingMode?: number, hasKeypad?: boolean, firmwareVersion?: number, hardwareRevision?: number, homekitStatus?: number, timezoneId?: number) {
         super();
@@ -49,17 +49,17 @@ export class ConfigCommand extends Command {
         this.fobAction1 = fobAction1 ?? 0;
         this.fobAction2 = fobAction2 ?? 0;
         this.fobAction3 = fobAction3 ?? 0;
-        this.singleLock = singleLock ?? false;
-        this.advertisingMode = advertisingMode ?? 0;
-        this.hasKeypad = hasKeypad ?? false;
-        this.firmwareVersion = firmwareVersion ?? 0;
-        this.hardwareRevision = hardwareRevision ?? 0;
-        this.homekitStatus = homekitStatus ?? 0;
-        this.timezoneId = timezoneId ?? 0;
+        this.singleLock = singleLock;
+        this.advertisingMode = advertisingMode;
+        this.hasKeypad = hasKeypad;
+        this.firmwareVersion = firmwareVersion;
+        this.hardwareRevision = hardwareRevision;
+        this.homekitStatus = homekitStatus;
+        this.timezoneId = timezoneId;
     }
     
     decode(buffer: Buffer): void {
-        if (buffer.length !== 72) {
+        if (buffer.length !== 63 && buffer.length !== 74) {
             throw new DecodingError(ERROR_BAD_LENGTH);
         }
         let ofs = 0;
@@ -95,24 +95,25 @@ export class ConfigCommand extends Command {
         ofs += 1;
         this.fobAction3 = buffer.readUInt8(ofs);
         ofs += 1;
-        this.singleLock = buffer.readUInt8(ofs) === 1;
-        ofs += 1;
-        this.advertisingMode = buffer.readUInt8(ofs);
-        ofs += 1;
-        this.hasKeypad = buffer.readUInt8(ofs) === 1;
-        ofs += 1;
-        this.firmwareVersion = readUInt24BE(buffer, ofs);
-        ofs += 3;
-        this.hardwareRevision = buffer.readUInt16LE(ofs);
-        ofs += 2;
-        this.homekitStatus = buffer.readUInt8(ofs);
-        // TODO: iOS app does not like this
-        // ofs += 1;
-        // this.timezoneId = buffer.readUInt16LE(ofs);
+        if (buffer.length > 63) {
+            this.singleLock = buffer.readUInt8(ofs) === 1;
+            ofs += 1;
+            this.advertisingMode = buffer.readUInt8(ofs);
+            ofs += 1;
+            this.hasKeypad = buffer.readUInt8(ofs) === 1;
+            ofs += 1;
+            this.firmwareVersion = readUInt24BE(buffer, ofs);
+            ofs += 3;
+            this.hardwareRevision = buffer.readUInt16LE(ofs);
+            ofs += 2;
+            this.homekitStatus = buffer.readUInt8(ofs);
+            ofs += 1;
+            this.timezoneId = buffer.readUInt16LE(ofs);
+        }
     }
 
     encode(): Buffer {
-        const buffer = Buffer.alloc(72);
+        const buffer = Buffer.alloc(74);
         let ofs = 0;
         buffer.writeUInt32LE(this.nukiId, ofs);
         ofs += 4;
@@ -122,13 +123,13 @@ export class ConfigCommand extends Command {
         ofs += 4;
         buffer.writeFloatLE(this.longitude, ofs);
         ofs += 4;
-        buffer.writeUInt8(this.autoUnlatch === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.autoUnlatch ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.pairingEnabled === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.pairingEnabled ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.buttonEnabled === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.buttonEnabled ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.ledEnabled === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.ledEnabled ? 1 : 0, ofs);
         ofs += 1;
         buffer.writeUInt8(this.ledBrightness, ofs);
         ofs += 1;
@@ -136,9 +137,9 @@ export class ConfigCommand extends Command {
         ofs += 7;
         buffer.writeInt16LE(this.timezoneOffset, ofs);
         ofs += 2;
-        buffer.writeUInt8(this.dstMode === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.dstMode ? 1 : 0, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.hasFob === true ? 1 : 0, ofs);
+        buffer.writeUInt8(this.hasFob ? 1 : 0, ofs);
         ofs += 1;
         buffer.writeUInt8(this.fobAction1, ofs);
         ofs += 1;
@@ -146,21 +147,23 @@ export class ConfigCommand extends Command {
         ofs += 1;
         buffer.writeUInt8(this.fobAction3, ofs);
         ofs += 1;
-        buffer.writeUInt8(this.singleLock === true ? 1 : 0, ofs);
-        ofs += 1;
-        buffer.writeUInt8(this.advertisingMode, ofs);
-        ofs += 1;
-        buffer.writeUInt8(this.hasKeypad === true ? 1 : 0, ofs);
-        ofs += 1;
-        writeUInt24BE(buffer, this.firmwareVersion, ofs);
-        ofs += 3;
-        buffer.writeUInt16LE(this.hardwareRevision, ofs);
-        ofs += 2;
-        buffer.writeUInt8(this.homekitStatus, ofs);
-        // TODO: iOS app does not like this
-        // ofs += 1;
-        // buffer.writeUInt16LE(this.timezoneId, ofs);
-        return buffer;
+        if (this.singleLock !== undefined) {
+            buffer.writeUInt8(this.singleLock ? 1 : 0, ofs);
+            ofs += 1;
+            buffer.writeUInt8(this.advertisingMode ?? 0, ofs);
+            ofs += 1;
+            buffer.writeUInt8(this.hasKeypad ?? false ? 1 : 0, ofs);
+            ofs += 1;
+            writeUInt24BE(buffer, this.firmwareVersion ?? 0, ofs);
+            ofs += 3;
+            buffer.writeUInt16LE(this.hardwareRevision ?? 0, ofs);
+            ofs += 2;
+            buffer.writeUInt8(this.homekitStatus ?? 0, ofs);
+            ofs += 1;
+            buffer.writeUInt16LE(this.timezoneId ?? 0, ofs);
+            ofs += 2;
+        }
+        return buffer.slice(0, ofs);
     }
     
     toString(): string {
@@ -181,13 +184,15 @@ export class ConfigCommand extends Command {
         str += "\n  fobAction1: " + "0x" + this.fobAction1.toString(16).padStart(2, "0");
         str += "\n  fobAction2: " + "0x" + this.fobAction2.toString(16).padStart(2, "0");
         str += "\n  fobAction3: " + "0x" + this.fobAction3.toString(16).padStart(2, "0");
-        str += "\n  singleLock: " + this.singleLock;
-        str += "\n  advertisingMode: " + "0x" + this.advertisingMode.toString(16).padStart(2, "0");
-        str += "\n  hasKeypad: " + this.hasKeypad;
-        str += "\n  firmwareVersion: " + "0x" + this.firmwareVersion.toString(16).padStart(6, "0");
-        str += "\n  hardwareRevision: " + "0x" + this.hardwareRevision.toString(16).padStart(4, "0");
-        str += "\n  homekitStatus: " + "0x" + this.homekitStatus.toString(16).padStart(2, "0");
-        str += "\n  timezoneId: " + "0x" + this.timezoneId.toString(16).padStart(4, "0");
+        if (this.singleLock !== undefined) {
+            str += "\n  singleLock: " + this.singleLock;
+            str += "\n  advertisingMode: " + "0x" + (this.advertisingMode ?? 0).toString(16).padStart(2, "0");
+            str += "\n  hasKeypad: " + this.hasKeypad ?? false;
+            str += "\n  firmwareVersion: " + "0x" + (this.firmwareVersion ?? 0).toString(16).padStart(6, "0");
+            str += "\n  hardwareRevision: " + "0x" + (this.hardwareRevision ?? 0).toString(16).padStart(4, "0");
+            str += "\n  homekitStatus: " + "0x" + (this.homekitStatus ?? 0).toString(16).padStart(2, "0");
+            str += "\n  timezoneId: " + "0x" + (this.timezoneId ?? 0).toString(16).padStart(4, "0");
+        }
         str += "\n}";
         return str;
     }
