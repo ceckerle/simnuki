@@ -9,9 +9,11 @@ export class DataIoService extends bleno.PrimaryService {
 
     private pendingIndicationPromise: Promise<void> = Promise.resolve();
     private pendingIndicationPromiseResolve: () => void = () => undefined;
+    private pendingIndicationPromiseReject: (err: Error) => void = () => undefined;
     private pendingIndicationCharacteristic?: DataIoCharacteristic;
     private pendingIndicationData: Buffer = Buffer.alloc(0);
     private pendingIndicationOffset = 0;
+    private pendingIndicationTimeout: NodeJS.Timeout|undefined;
 
     constructor(uuid: string, characteristics: {uuid: string, id: number, writeOnly?: boolean}[], private handler: DataIoServiceHandler) {
         super({
@@ -35,24 +37,27 @@ export class DataIoService extends bleno.PrimaryService {
     }
 
     onIndicate(): void {
+        if (this.pendingIndicationTimeout) {
+            clearTimeout(this.pendingIndicationTimeout);
+        }
         setTimeout(() => {
             this.processPendingIndication();
         }, 0);
     }
 
     protected sendIndication = async (data: Buffer, characteristicId: number): Promise<void> => {
-        return this.pendingIndicationPromise.finally(() => {
-            new Promise((resolve, reject) => {
+        return this.pendingIndicationPromise = new Promise((resolve, reject) => {
+            this.pendingIndicationPromise.finally(() => {
                 this.pendingIndicationPromiseResolve = resolve;
+                this.pendingIndicationPromiseReject = reject;
                 this.pendingIndicationCharacteristic = this.chars.find((c) => c.id === characteristicId);
                 if (!this.pendingIndicationCharacteristic) {
-                    reject(new Error(`Invalid characteristic id ${characteristicId.toString(16)}`));
-                    return;
+                    throw new Error(`Invalid characteristic id ${characteristicId.toString(16)}`);
                 }
                 this.pendingIndicationData = data;
                 this.pendingIndicationOffset = 0;
                 this.processPendingIndication();
-            });
+            }).catch(reject);
         });
     }
 
@@ -75,12 +80,18 @@ export class DataIoService extends bleno.PrimaryService {
             }
             const sendLength = Math.min(remaining, limit);
             const sendData = this.pendingIndicationData.subarray(this.pendingIndicationOffset, this.pendingIndicationOffset + sendLength);
+            this.pendingIndicationTimeout = setTimeout(this.abortPendingIndication, 5000);
             // console.log("sending " + sendData.toString("hex"));
             this.pendingIndicationCharacteristic.sendIndication(sendData);
             this.pendingIndicationOffset += sendLength;
         } else {
             this.pendingIndicationPromiseResolve();
         }
+    }
+
+    private abortPendingIndication = () => {
+        this.pendingIndicationPromiseReject(new Error("Timeout waiting for indication confirmation"));
+        this.pendingIndicationOffset = this.pendingIndicationData.length;
     }
 
 }
