@@ -77,11 +77,35 @@ export class PairingServiceHandler {
         }
     }
 
-    async handleRequest (data: Buffer, characteristicId: number, sendAsync: (data: Buffer, characteristicId: number) => Promise<void>): Promise<void> {
+    async handleRequest (data: Buffer, characteristicId: number, sendAsync: (data: Buffer, characteristicId: number) => Promise<void>, disconnect: () => void): Promise<void> {
         try {
-            const command = decodeCommand(data);
-            console.log("received " + command.toString());
-            const response = await this.handleCommand(command);
+            let command: Command;
+            try {
+                command = decodeCommand(data);
+                console.log("received " + command.toString());
+            } catch (e) {
+                console.log("Error decoding command", data.toString("hex"), e);
+                this.state = {
+                    key: "Initial"
+                };
+                if (e instanceof DecodingError) {
+                    await sendAsync(encodeCommand(new ErrorCommand(e.code, e.commandId)), PAIRING_GDIO_CHARACTERISTIC);
+                } else {
+                    await sendAsync(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), PAIRING_GDIO_CHARACTERISTIC);
+                }
+                return;
+            }
+            let response: Command;
+            try {
+                response = await this.handleCommand(command);
+            } catch (e) {
+                console.log("Error executing command", e);
+                this.state = {
+                    key: "Initial"
+                };
+                await sendAsync(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), PAIRING_GDIO_CHARACTERISTIC);
+                return;
+            }
             console.log("sending " + response.toString());
             if (response instanceof ErrorCommand) {
                 this.state = {
@@ -93,15 +117,11 @@ export class PairingServiceHandler {
             }
             await sendAsync(encodeCommand(response), PAIRING_GDIO_CHARACTERISTIC);
         } catch (e) {
-            console.log(e);
+            console.log("Error sending response, disconnecting", e);
             this.state = {
                 key: "Initial"
             };
-            if (e instanceof DecodingError) {
-                await sendAsync(encodeCommand(new ErrorCommand(e.code, e.commandId)), PAIRING_GDIO_CHARACTERISTIC);
-            } else {
-                await sendAsync(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), PAIRING_GDIO_CHARACTERISTIC);
-            }
+            disconnect();
         }
     }
 

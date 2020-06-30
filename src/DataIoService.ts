@@ -1,7 +1,7 @@
 import * as bleno from "@abandonware/bleno"
 import {DataIoCharacteristic} from "./DataIoCharacteristic";
 
-export type DataIoServiceHandler = (data: Buffer, characteristicId: number, sendAsync: (data: Buffer, characteristicId: number) => Promise<void>) => Promise<void>;
+export type DataIoServiceHandler = (data: Buffer, characteristicId: number, sendAsync: (data: Buffer, characteristicId: number) => Promise<void>, disconnect: () => void) => Promise<void>;
 
 export class DataIoService extends bleno.PrimaryService {
 
@@ -31,8 +31,9 @@ export class DataIoService extends bleno.PrimaryService {
 
     onWrite(data: Buffer, characteristicId: number): void {
         // console.log(`onWrite ${data.toString("hex")} ${characteristicId}`);
-        this.handler(data, characteristicId, this.sendIndication).catch((error) => {
+        this.handler(data, characteristicId, this.sendIndication, () => bleno.disconnect).catch((error) => {
             console.log("handleRequest failure", error);
+            bleno.disconnect();
         });
     }
 
@@ -90,8 +91,9 @@ export class DataIoService extends bleno.PrimaryService {
     }
 
     private abortPendingIndication = () => {
-        this.pendingIndicationPromiseReject(new Error("Timeout waiting for indication confirmation"));
         this.pendingIndicationOffset = this.pendingIndicationData.length;
+        bleno.disconnect();
+        this.pendingIndicationPromiseReject(new Error("Timeout waiting for indication confirmation"));
     }
 
 }

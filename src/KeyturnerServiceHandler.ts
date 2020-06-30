@@ -91,47 +91,89 @@ export class KeyturnerServiceHandler {
         }
     }
 
-    async handleRequest(data: Buffer, characteristicId: number, sendAsync: (data: Buffer, characteristicId: number) => Promise<void>): Promise<void> {
+    async handleRequest(data: Buffer, characteristicId: number, sendAsync: (data: Buffer, characteristicId: number) => Promise<void>, disconnect: () => void): Promise<void> {
         if (characteristicId === KEYTURNER_USDIO_CHARACTERISTIC) {
             try {
-                const {data: decrypted, authorizationId, nonce, sharedSecret} = decryptCommand(data, (id) => {
-                    const user = this.config.getUser(id);
-                    return user && Buffer.from(user.sharedSecret, "hex");
-                });
+                let decrypted: Buffer;
+                let authorizationId: number;
+                let sharedSecret: Buffer;
                 try {
-                    const command = decodeCommand(decrypted, true);
-                    console.log("received " + command.toString());
-
-                    const sendCommand = async (command: Command): Promise<void> => {
-                        console.log("sending " + command.toString());
-                        await sendAsync(encryptCommand(encodeCommand(command), authorizationId, nonce, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
-                    };
-
-                    const response = await this.handleCommand(command, sendCommand);
-                    console.log("sending " + response.toString());
-                    if (response instanceof ErrorCommand) {
-                        this.state = {
-                            key: "Initial"
-                        };
-                        if (response.message) {
-                            console.log(response.message);
-                        }
-                    }
-                    await sendAsync(encryptCommand(encodeCommand(response), authorizationId, nonce, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
+                    ({data: decrypted, authorizationId, sharedSecret} = decryptCommand(data, (id) => {
+                        const user = this.config.getUser(id);
+                        return user && Buffer.from(user.sharedSecret, "hex");
+                    }));
                 } catch (e) {
-                    console.log("Command failed", decrypted.toString("hex"), e);
+                    console.log("Error decrypting command", data.toString("hex"), e);
+                    this.state = {
+                        key: "Initial"
+                    };
+                    await sendAsync(encodeCommand(new ErrorCommand(K_ERROR_NOT_AUTHORIZED, 0)), KEYTURNER_GDIO_CHARACTERISTIC);
+                    return;
+                }
+
+                let command: Command;
+                try {
+                    command = decodeCommand(decrypted, true);
+                    console.log("received " + command.toString());
+                } catch (e) {
+                    console.log("Error decoding command", data.toString("hex"), e);
                     this.state = {
                         key: "Initial"
                     };
                     if (e instanceof DecodingError) {
-                        await sendAsync(encryptCommand(encodeCommand(new ErrorCommand(e.code, e.commandId)), authorizationId, nonce, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
+                        await sendAsync(encryptCommand(encodeCommand(new ErrorCommand(e.code, e.commandId)), authorizationId, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
                     } else {
-                        await sendAsync(encryptCommand(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), authorizationId, nonce, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
+                        await sendAsync(encryptCommand(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), authorizationId, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
+                    }
+                    return;
+                }
+
+                let response: Command;
+                try {
+                    const sendCommand = async (command: Command): Promise<void> => {
+                        console.log("sending " + command.toString());
+                        try {
+                            await sendAsync(encryptCommand(encodeCommand(command), authorizationId, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
+                        } catch (e) {
+                            console.log("Error sending intermediate response, disconnecting", e);
+                            this.state = {
+                                key: "Initial"
+                            };
+                            disconnect();
+                            throw sendCommand;
+                        }
+                    };
+
+                    response = await this.handleCommand(command, sendCommand);
+                } catch (e) {
+                    if (e === sendAsync) {
+                        // error already handled
+                        return;
+                    }
+                    console.log("Error executing command", e);
+                    this.state = {
+                        key: "Initial"
+                    };
+                    await sendAsync(encryptCommand(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), authorizationId, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
+                    return;
+                }
+
+                console.log("sending " + response.toString());
+                if (response instanceof ErrorCommand) {
+                    this.state = {
+                        key: "Initial"
+                    };
+                    if (response.message) {
+                        console.log(response.message);
                     }
                 }
+                await sendAsync(encryptCommand(encodeCommand(response), authorizationId, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
             } catch (e) {
-                console.log("Decryption failed", data.toString("hex"), e);
-                await sendAsync(encodeCommand(new ErrorCommand(K_ERROR_NOT_AUTHORIZED, 0)), KEYTURNER_GDIO_CHARACTERISTIC);
+                console.log("Error sending response, disconnecting", e);
+                this.state = {
+                    key: "Initial"
+                };
+                disconnect();
             }
         } else {
             throw new Error(`Data received on unexpected characteristic ${characteristicId} ${data.toString("hex")}`);
@@ -435,7 +477,6 @@ export class KeyturnerServiceHandler {
 export function decryptCommand(data: Buffer, sharedSecretProvider: (authId: number) => Buffer|undefined): {
     data: Buffer,
     authorizationId: number,
-    nonce: Buffer,
     sharedSecret: Buffer
 } {
     if (data.length < 38) {
@@ -472,16 +513,17 @@ export function decryptCommand(data: Buffer, sharedSecretProvider: (authId: numb
     return {
         data: decryptedCommand.slice(4),
         authorizationId,
-        nonce,
         sharedSecret
     };
 }
 
-export function encryptCommand(data: Buffer, authId: number, nonce: Buffer, sharedSecret: Buffer): Buffer {
+export function encryptCommand(data: Buffer, authId: number, sharedSecret: Buffer): Buffer {
     const authIdBuffer = Buffer.alloc(4);
     authIdBuffer.writeUInt32LE(authId, 0);
     const responseData = Buffer.concat([authIdBuffer, data]);
     setCrc(responseData);
+
+    const nonce = random(24);
 
     const pDataEncrypted = encrypt(responseData, nonce, sharedSecret);
 
