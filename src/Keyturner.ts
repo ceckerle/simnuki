@@ -59,7 +59,9 @@ export class Keyturner {
     private onDisconnect = () => {
         console.log('on -> disconnect');
         this.pairingServiceHandler.reset();
+        this.keyturnerPairingService.reset();
         this.keyturnerServiceHandler.reset();
+        this.keyturnerService.reset();
         this.advertiser.update();
     }
 

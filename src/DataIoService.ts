@@ -29,6 +29,10 @@ export class DataIoService extends bleno.PrimaryService {
         this.chars = this.characteristics as DataIoCharacteristic[];
     }
 
+    reset() {
+        this.pendingIndicationPromise = Promise.resolve();
+    }
+
     onWrite(data: Buffer, characteristicId: number): void {
         // console.log(`onWrite ${data.toString("hex")} ${characteristicId}`);
         this.handler(data, characteristicId, this.sendIndication, () => bleno.disconnect).catch((error) => {
@@ -48,7 +52,7 @@ export class DataIoService extends bleno.PrimaryService {
 
     protected sendIndication = async (data: Buffer, characteristicId: number): Promise<void> => {
         return this.pendingIndicationPromise = new Promise((resolve, reject) => {
-            this.pendingIndicationPromise.finally(() => {
+            this.pendingIndicationPromise.then(() => {
                 this.pendingIndicationPromiseResolve = resolve;
                 this.pendingIndicationPromiseReject = reject;
                 this.pendingIndicationCharacteristic = this.chars.find((c) => c.id === characteristicId);
