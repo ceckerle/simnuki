@@ -1,7 +1,7 @@
 import {Configuration} from "./Configuration";
 import {computeAuthenticator, deriveSharedSecret, generateKeyPair, random} from "./Crypto";
 import {
-    NUKI_NONCEBYTES,
+    NUKI_NONCEBYTES, NUKI_STATE_DOOR_MODE,
     NUKI_STATE_PAIRING_MODE,
     NUKI_STATE_UNINITIALIZED, PAIRING_GDIO_CHARACTERISTIC
 } from "./Protocol";
@@ -201,7 +201,7 @@ export class PairingServiceHandler {
                 appType: command.appType,
                 sharedSecret: this.state.sharedSecret.toString('hex')
             });
-            await this.config.save();
+            await this.config.save(true);
 
             const response = new AuthorizationIdCommand(
                 undefined,
@@ -236,6 +236,12 @@ export class PairingServiceHandler {
             this.state = {
                 key: "Initial"
             }
+
+            if (this.config.getNukiState() === NUKI_STATE_PAIRING_MODE) {
+                this.config.setNukiState(NUKI_STATE_DOOR_MODE);
+                this.config.save(true);
+            }
+
             return new StatusCommand(STATUS_COMPLETE);
         } else {
             return new ErrorCommand(ERROR_UNKNOWN, command.id, `bad command ${command.id}`)

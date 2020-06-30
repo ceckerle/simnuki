@@ -41,7 +41,7 @@ export class Configuration {
             this.config.set('nukiState', NUKI_STATE_UNINITIALIZED);
             this.config.set("lockState", LOCK_STATE_UNCALIBRATED);
             // TODO: init async
-            this.save().then(() => console.log("Initial configuration saved"),
+            this.save(true).then(() => console.log("Initial configuration saved"),
                 (err) => console.log("Writing initial configuration failed", err));
         } else {
             console.log("SL UUID: " + strUuid);
@@ -136,17 +136,13 @@ export class Configuration {
     }
 
     public getSerial(): number {
-        return this.config.get("serial");
+        return this.config.get("serial") ?? 0;
     }
 
-    public save(): Promise<void> {
-        let serial = this.config.get("serial");
-        if (serial === undefined) {
-            serial = 0;
-        } else {
-            serial++;
+    public save(skipSerialUpdate = false): Promise<void> {
+        if (!skipSerialUpdate) {
+            this.config.set("serial", this.getSerial() + 1);
         }
-        this.config.set("serial", serial);
         return new Promise((resolve, reject) => {
             this.config.save(null, (error) => {
                 if (error) {

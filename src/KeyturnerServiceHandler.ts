@@ -4,16 +4,31 @@ import {
     FIRMWARE_VERSION,
     FOB_ACTION_INTELLIGENT,
     FOB_ACTION_LOCK,
-    FOB_ACTION_LOCKNGO, FOB_ACTION_NONE,
-    FOB_ACTION_UNLOCK, HARDWARE_VERSION, KEYTURNER_GDIO_CHARACTERISTIC, KEYTURNER_USDIO_CHARACTERISTIC,
+    FOB_ACTION_LOCKNGO,
+    FOB_ACTION_NONE,
+    FOB_ACTION_UNLOCK,
+    HARDWARE_VERSION,
+    KEYTURNER_GDIO_CHARACTERISTIC,
+    KEYTURNER_USDIO_CHARACTERISTIC,
     LOCK_ACTION_FOB_ACTION_1,
     LOCK_ACTION_FOB_ACTION_2,
-    LOCK_ACTION_FOB_ACTION_3, LOCK_ACTION_FULL_LOCK,
+    LOCK_ACTION_FOB_ACTION_3,
+    LOCK_ACTION_FULL_LOCK,
     LOCK_ACTION_LOCK,
-    LOCK_ACTION_LOCKNGO, LOCK_ACTION_LOCKNGO_WITH_UNLATCH, LOCK_ACTION_UNLATCH,
+    LOCK_ACTION_LOCKNGO,
+    LOCK_ACTION_LOCKNGO_WITH_UNLATCH,
+    LOCK_ACTION_UNLATCH,
     LOCK_ACTION_UNLOCK,
-    LOCK_STATE_LOCKED, LOCK_STATE_LOCKING, LOCK_STATE_UNLATCHED, LOCK_STATE_UNLOCKED, LOCK_STATE_UNLOCKING,
-    NUKI_NONCEBYTES, NUKI_STATE_PAIRING_MODE, NUKI_STATE_UNINITIALIZED
+    LOCK_STATE_LOCKED,
+    LOCK_STATE_LOCKING,
+    LOCK_STATE_UNLATCHED,
+    LOCK_STATE_UNLOCKED,
+    LOCK_STATE_UNLOCKING,
+    NUKI_NONCEBYTES,
+    NUKI_STATE_DOOR_MODE,
+    NUKI_STATE_PAIRING_MODE,
+    NUKI_STATE_UNINITIALIZED,
+    PAIRING_GDIO_CHARACTERISTIC
 } from "./Protocol";
 import {decodeCommand, encodeCommand} from "./command/Codec";
 import {
@@ -223,7 +238,7 @@ export class KeyturnerServiceHandler {
                 this.config.get("latitude"),
                 this.config.get("longitude"),
                 this.config.get("autoUnlatch"),
-                this.config.get("pairingEnabled") ?? 1,
+                this.config.getNukiState() === NUKI_STATE_UNINITIALIZED || this.config.getNukiState() === NUKI_STATE_PAIRING_MODE,
                 this.config.get("buttonEnabled") ?? 1,
                 this.config.get("ledFlashEnabled") ?? 1,
                 this.config.get("ledBrightness") ?? 1,
@@ -247,7 +262,6 @@ export class KeyturnerServiceHandler {
             this.config.set("latitude", command.latitude);
             this.config.set("longitude", command.longitude);
             this.config.set("autoUnlatch", command.autoUnlatch);
-            this.config.set("pairingEnabled", command.pairingEnabled);
             this.config.set("buttonEnabled", command.buttonEnabled);
             this.config.set("ledFlashEnabled", command.ledEnabled);
             this.config.set("ledBrightness", command.ledBrightness);
@@ -256,9 +270,24 @@ export class KeyturnerServiceHandler {
             this.config.set("fobAction2", command.fobAction2);
             this.config.set("fobAction3", command.fobAction3);
 
-            if (this.config.getNukiState() === NUKI_STATE_UNINITIALIZED) {
-                this.config.setNukiState(NUKI_STATE_PAIRING_MODE);
+            let nukiState = this.config.getNukiState();
+
+            // exit uninitialized state on first config write
+            if (nukiState == NUKI_STATE_UNINITIALIZED) {
+                nukiState = NUKI_STATE_DOOR_MODE;
+            } else {
+                // use pairing mode config flag to emulate pairing button
+                if (command.pairingEnabled) {
+                    if (nukiState === NUKI_STATE_DOOR_MODE) {
+                        nukiState = NUKI_STATE_PAIRING_MODE;
+                    }
+                } else {
+                    if (nukiState === NUKI_STATE_PAIRING_MODE) {
+                        nukiState = NUKI_STATE_DOOR_MODE;
+                    }
+                }
             }
+            this.config.setNukiState(nukiState);
 
             await this.config.save();
             return new StatusCommand(STATUS_COMPLETE);
