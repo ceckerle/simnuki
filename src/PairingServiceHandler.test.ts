@@ -87,7 +87,7 @@ function wrapHandleRequest(handleRequest: DataIoServiceHandler)  {
                 } catch (e) {
                     reject(e);
                 }
-            }).catch(reject);
+            }, () => undefined).catch(reject);
         });
     };
 }

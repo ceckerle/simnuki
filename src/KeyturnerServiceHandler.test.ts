@@ -20,6 +20,7 @@ import {ChallengeCommand} from "./command/ChallengeCommand";
 import {ConfigCommand} from "./command/ConfigCommand";
 import {DataIoServiceHandler} from "./DataIoService";
 import {ErrorCommand} from "./command/ErrorCommand";
+import {disconnect} from "cluster";
 
 jest.mock("./Configuration");
 
@@ -93,8 +94,7 @@ function wrapHandleRequest(handleRequest: DataIoServiceHandler)  {
         return new Promise<T>((resolve, reject) => {
             let data = encodeCommand(command);
             if (characteristicId === KEYTURNER_USDIO_CHARACTERISTIC) {
-                const nonce = random(24);
-                data = encryptCommand(data, clientUser.authorizationId, nonce, Buffer.from(clientUser.sharedSecret, "hex"));
+                data = encryptCommand(data, clientUser.authorizationId, Buffer.from(clientUser.sharedSecret, "hex"));
             } else if (characteristicId !== KEYTURNER_GDIO_CHARACTERISTIC) {
                 throw new Error(`Unexpected characteristic id ${characteristicId.toString(16)}`);
             }
@@ -117,7 +117,7 @@ function wrapHandleRequest(handleRequest: DataIoServiceHandler)  {
                 } catch (e) {
                     reject(e);
                 }
-            }).catch(reject);
+            }, () => undefined).catch(reject);
         });
     };
 }
