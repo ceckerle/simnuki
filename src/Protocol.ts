@@ -12,7 +12,7 @@ export const KEYTURNER_USDIO_CHARACTERISTIC = 0x202;
 export const KEYTURNER_THRID_CHARACTERISTIC = 0x203;
 
 export const FIRMWARE_VERSION = 0x020000;
-export const HARDWARE_VERSION = 0x0200;
+export const HARDWARE_VERSION = 0x0205; // iOS app will hide some config options for lower versions, Android app does not care
 
 export const NUKI_NONCEBYTES = 32;
 
