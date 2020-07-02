@@ -1,14 +1,16 @@
 import {Configuration} from "./Configuration";
 import {decrypt, encrypt, random} from "./Crypto";
 import {
-    DOOR_SENSOR_STATE_UNAVAILABLE,
+    DOOR_SENSOR_STATE_CALIBRATING,
+    DOOR_SENSOR_STATE_CLOSED,
+    DOOR_SENSOR_STATE_DEACTIVATED,
     FIRMWARE_VERSION,
     FOB_ACTION_INTELLIGENT,
     FOB_ACTION_LOCK,
     FOB_ACTION_LOCKNGO,
     FOB_ACTION_NONE,
     FOB_ACTION_UNLOCK,
-    HARDWARE_VERSION, HOMEKIT_STATUS_UNAVAILABLE,
+    HARDWARE_VERSION, HOMEKIT_STATUS_ENABLED,
     KEYTURNER_GDIO_CHARACTERISTIC,
     KEYTURNER_USDIO_CHARACTERISTIC,
     LOCK_ACTION_FOB_ACTION_1,
@@ -79,6 +81,12 @@ import {EnableLoggingCommand} from "./command/EnableLoggingCommand";
 import {AuthorizationDataInviteCommand} from "./command/AuthorizationDataInviteCommand";
 import {AuthorizationIdInviteCommand} from "./command/AuthorizationIdInviteCommand";
 import {DateTime} from "./command/DateTime";
+import {RequestDoorSensorConfigurationCommand} from "./command/RequestDoorSensorConfigurationCommand";
+import {DoorSensorConfigurationCommand} from "./command/DoorSensorConfigurationCommand";
+import {RequestDoorSensorCalibrationCommand} from "./command/RequestDoorSensorCalibrationCommand";
+import {SetHomeKitConfigurationCommand} from "./command/SetHomeKitConfigurationCommand";
+import {SetDoorSensorConfigurationCommand} from "./command/SetDoorSensorConfigurationCommand";
+import {EnableDoorSensorLoggingCommand} from "./command/EnableDoorSensorLoggingCommand";
 
 interface KeyturnerStateInitial {
     key: "Initial"
@@ -131,7 +139,7 @@ export class KeyturnerServiceHandler {
                     command = decodeCommand(decrypted, true);
                     console.log("received " + command.toString());
                 } catch (e) {
-                    console.log("Error decoding command", data.toString("hex"), e);
+                    console.log("Error decoding command", decrypted.toString("hex"), e);
                     this.state = {
                         key: "Initial"
                     };
@@ -254,7 +262,7 @@ export class KeyturnerServiceHandler {
                 false,
                 FIRMWARE_VERSION,
                 HARDWARE_VERSION,
-                HOMEKIT_STATUS_UNAVAILABLE,
+                HOMEKIT_STATUS_ENABLED,
                 37
             );
         } else if (command instanceof SetConfigCommand) {
@@ -469,13 +477,62 @@ export class KeyturnerServiceHandler {
             return new AuthorizationIdInviteCommand(authorizationId, DateTime.fromDate(new Date()));
         } else if (command instanceof RequestLogEntriesCommand) {
             if (command.totalCount) {
-                await sendCommand(new LogEntryCountCommand(1, 0, false, false));
+                await sendCommand(new LogEntryCountCommand(
+                    this.config.get("loggingEnabled") ?? false,
+                    0,
+                    this.config.get("doorSensorEnabled") ?? false,
+                    this.config.get("doorSensorLoggingEnabled") ?? false
+                ));
             }
+
             // TODO: implement logging
 
             return new StatusCommand(STATUS_COMPLETE);
         } else if (command instanceof EnableLoggingCommand) {
+            this.config.set("loggingEnabled", command.enabled);
+            this.config.save();
+
             // TODO: implement logging
+
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof SetHomeKitConfigurationCommand) {
+            // TODO: implement
+
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof SetDoorSensorConfigurationCommand) {
+            this.config.set("doorSensorEnabled", command.enabled);
+            this.config.set("doorSensorUnlockedDoorOpenWarningTime", command.unlockedDoorOpenWarningTime);
+            this.config.set("doorSensorUnlockedDoorOpenWarningEnable", command.unlockedDoorOpenWarningEnable);
+            this.config.set("doorSensorLockedDoorOpenWarningEnabled", command.lockedDoorOpenWarningEnabled);
+            this.config.set("doorSensorState", command.enabled ? DOOR_SENSOR_STATE_CLOSED : DOOR_SENSOR_STATE_DEACTIVATED);
+            this.config.save();
+
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof RequestDoorSensorCalibrationCommand) {
+            switch (command.data) {
+                case 1:
+                case 2:
+                    this.config.set("doorSensorState", DOOR_SENSOR_STATE_CALIBRATING);
+                    this.config.set("doorSensorEnabled", false);
+                    break;
+                case 3:
+                    this.config.set("doorSensorState", DOOR_SENSOR_STATE_CLOSED);
+                    this.config.set("doorSensorEnabled", true);
+                    break;
+            }
+            this.config.save();
+
+            return new StatusCommand(STATUS_COMPLETE);
+        } else if (command instanceof RequestDoorSensorConfigurationCommand) {
+            return new DoorSensorConfigurationCommand(
+                this.config.get("doorSensorEnabled") ?? false,
+                this.config.get("doorSensorUnlockedDoorOpenWarningTime") ?? 30,
+                this.config.get("doorSensorUnlockedDoorOpenWarningEnable") ?? false,
+                this.config.get("doorSensorLockedDoorOpenWarningEnabled") ?? false
+            );
+        } else if (command instanceof EnableDoorSensorLoggingCommand) {
+            this.config.set("doorSensorLoggingEnabled", command.enabled);
+            this.config.save();
 
             return new StatusCommand(STATUS_COMPLETE);
         } else {
@@ -497,7 +554,7 @@ export class KeyturnerServiceHandler {
             0,
             0,
             0,
-            DOOR_SENSOR_STATE_UNAVAILABLE
+            this.config.get("doorSensorState") ?? DOOR_SENSOR_STATE_DEACTIVATED
         );
     }
 
