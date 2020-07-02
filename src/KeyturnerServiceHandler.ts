@@ -1,13 +1,14 @@
 import {Configuration} from "./Configuration";
 import {decrypt, encrypt, random} from "./Crypto";
 import {
+    DOOR_SENSOR_STATE_UNAVAILABLE,
     FIRMWARE_VERSION,
     FOB_ACTION_INTELLIGENT,
     FOB_ACTION_LOCK,
     FOB_ACTION_LOCKNGO,
     FOB_ACTION_NONE,
     FOB_ACTION_UNLOCK,
-    HARDWARE_VERSION,
+    HARDWARE_VERSION, HOMEKIT_STATUS_UNAVAILABLE,
     KEYTURNER_GDIO_CHARACTERISTIC,
     KEYTURNER_USDIO_CHARACTERISTIC,
     LOCK_ACTION_FOB_ACTION_1,
@@ -27,8 +28,7 @@ import {
     NUKI_NONCEBYTES,
     NUKI_STATE_DOOR_MODE,
     NUKI_STATE_PAIRING_MODE,
-    NUKI_STATE_UNINITIALIZED,
-    PAIRING_GDIO_CHARACTERISTIC
+    NUKI_STATE_UNINITIALIZED
 } from "./Protocol";
 import {decodeCommand, encodeCommand} from "./command/Codec";
 import {
@@ -235,26 +235,26 @@ export class KeyturnerServiceHandler {
             return new ConfigCommand(
                 parseInt(this.config.getNukiIdStr(), 16),
                 this.config.getName(),
-                this.config.get("latitude"),
-                this.config.get("longitude"),
-                this.config.get("autoUnlatch"),
+                this.config.get("latitude") ?? 0,
+                this.config.get("longitude") ?? 0,
+                this.config.get("autoUnlatch") ?? false,
                 this.config.getNukiState() === NUKI_STATE_UNINITIALIZED || this.config.getNukiState() === NUKI_STATE_PAIRING_MODE,
-                this.config.get("buttonEnabled") ?? 1,
-                this.config.get("ledFlashEnabled") ?? 1,
-                this.config.get("ledBrightness") ?? 1,
+                this.config.get("buttonEnabled") ?? true,
+                this.config.get("ledFlashEnabled") ?? true,
+                this.config.get("ledBrightness") ?? 3,
                 DateTime.fromDate(now),
-                -now.getTimezoneOffset(),
-                this.config.get("dstMode") ?? 1,
+                0,
                 false,
-                this.config.get("fobAction1") ?? 1, // unlock
-                this.config.get("fobAction2") ?? 2, // lock
-                this.config.get("fobAction3"),
+                false,
+                this.config.get("fobAction1") ?? FOB_ACTION_INTELLIGENT,
+                this.config.get("fobAction2") ?? FOB_ACTION_UNLOCK,
+                this.config.get("fobAction3") ?? FOB_ACTION_LOCK,
                 false,
                 0,
                 false,
                 FIRMWARE_VERSION,
                 HARDWARE_VERSION,
-                1,
+                HOMEKIT_STATUS_UNAVAILABLE,
                 37
             );
         } else if (command instanceof SetConfigCommand) {
@@ -299,13 +299,19 @@ export class KeyturnerServiceHandler {
             // TODO: implement
 
             return new AdvancedConfigCommand(
-                720,
                 0,
                 0,
                 0,
                 0,
-                0
-
+                0,
+                0x14,
+                0x01,
+                0x05,
+                false,
+                0x00,
+                true,
+                0x03,
+                0x0000
             );
         } else if (command instanceof SetAdvancedConfigCommand) {
             // TODO: implement
@@ -484,14 +490,14 @@ export class KeyturnerServiceHandler {
             this.config.getLockState(),
             0, // bluetooth
             DateTime.fromDate(now),
-            -now.getTimezoneOffset(),
+            0,
             false,
             this.config.getSerial() & 0xff,
             0,
             0,
             0,
             0,
-            0
+            DOOR_SENSOR_STATE_UNAVAILABLE
         );
     }
 

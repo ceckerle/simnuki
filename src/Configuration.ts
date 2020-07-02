@@ -37,9 +37,6 @@ export class Configuration {
             } while (nukiId.readInt32BE(0) <= 0); // Android app crashes with ids <= 0
             const nukiIdStr = nukiId.toString("hex").toUpperCase();
             this.config.set('nukiId', nukiIdStr);
-            this.config.set('name', "Nuki_" + nukiIdStr);
-            this.config.set('nukiState', NUKI_STATE_UNINITIALIZED);
-            this.config.set("lockState", LOCK_STATE_UNCALIBRATED);
             // TODO: init async
             this.save(true).then(() => console.log("Initial configuration saved"),
                 (err) => console.log("Writing initial configuration failed", err));
@@ -57,7 +54,7 @@ export class Configuration {
     }
 
     public getName(): string {
-        return this.get("name");
+        return this.get("name") ?? "Nuki";
     }
 
     public setName(name: string):void {
@@ -65,7 +62,7 @@ export class Configuration {
     }
 
     public getNukiState(): number {
-        return this.get("nukiState");
+        return this.get("nukiState") ?? NUKI_STATE_UNINITIALIZED;
     }
 
     public setNukiState(state: number): void {
@@ -73,7 +70,7 @@ export class Configuration {
     }
 
     public getLockState(): number {
-        return this.get("lockState");
+        return this.get("lockState") ?? LOCK_STATE_UNCALIBRATED;
     }
 
     public setLockState(state: number): void {
