@@ -29,7 +29,7 @@ export class DataIoService extends bleno.PrimaryService {
         this.chars = this.characteristics as DataIoCharacteristic[];
     }
 
-    reset() {
+    reset(): void {
         this.pendingIndicationPromise = Promise.resolve();
     }
 

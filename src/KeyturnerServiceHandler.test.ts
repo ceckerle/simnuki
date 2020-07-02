@@ -20,7 +20,6 @@ import {ChallengeCommand} from "./command/ChallengeCommand";
 import {ConfigCommand} from "./command/ConfigCommand";
 import {DataIoServiceHandler} from "./DataIoService";
 import {ErrorCommand} from "./command/ErrorCommand";
-import {disconnect} from "cluster";
 
 jest.mock("./Configuration");
 
