@@ -5,10 +5,8 @@ import {
     NUKI_STATE_PAIRING_MODE,
     NUKI_STATE_UNINITIALIZED, PAIRING_GDIO_CHARACTERISTIC
 } from "./Protocol";
-import {decodeCommand, encodeCommand} from "./command/Codec";
 import {Command} from "./command/Command";
 import {ErrorCommand} from "./command/ErrorCommand";
-import {DecodingError} from "./command/DecodingError";
 import {
     CMD_PUBLIC_KEY,
     ERROR_UNKNOWN,
@@ -77,58 +75,17 @@ export class PairingServiceHandler {
         }
     }
 
-    async handleRequest (data: Buffer, characteristicId: number, sendAsync: (data: Buffer, characteristicId: number) => Promise<void>, disconnect: () => void): Promise<void> {
-        try {
-            let command: Command;
-            try {
-                command = decodeCommand(data);
-                console.log("received " + command.toString());
-            } catch (e) {
-                console.log("Error decoding command", data.toString("hex"), e);
-                this.state = {
-                    key: "Initial"
-                };
-                if (e instanceof DecodingError) {
-                    await sendAsync(encodeCommand(new ErrorCommand(e.code, e.commandId)), PAIRING_GDIO_CHARACTERISTIC);
-                } else {
-                    await sendAsync(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), PAIRING_GDIO_CHARACTERISTIC);
-                }
-                return;
-            }
-            let response: Command;
-            try {
-                response = await this.handleCommand(command);
-            } catch (e) {
-                console.log("Error executing command", e);
-                this.state = {
-                    key: "Initial"
-                };
-                await sendAsync(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), PAIRING_GDIO_CHARACTERISTIC);
-                return;
-            }
-            console.log("sending " + response.toString());
-            if (response instanceof ErrorCommand) {
-                this.state = {
-                    key: "Initial"
-                };
-                if (response.message) {
-                    console.log(response.message);
-                }
-            }
-            await sendAsync(encodeCommand(response), PAIRING_GDIO_CHARACTERISTIC);
-        } catch (e) {
-            console.log("Error sending response, disconnecting", e);
-            this.state = {
-                key: "Initial"
-            };
-            disconnect();
+    handleCommand = async (request: {command: Command, characteristicId: number, authorizationId?: number}): Promise<Command|false> => {
+        if (request.characteristicId !== PAIRING_GDIO_CHARACTERISTIC) {
+            return false;
         }
-    }
 
-    private async handleCommand(command: Command): Promise<Command> {
+        const command = request.command;
+
         if (this.config.getNukiState() !== NUKI_STATE_UNINITIALIZED && this.config.getNukiState() !== NUKI_STATE_PAIRING_MODE) {
             return new ErrorCommand(P_ERROR_NOT_PAIRING, command.id, "not in pairing mode");
         }
+
         if (command instanceof RequestDataCommand) {
             if (this.state.key !== "Initial") {
                 return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);

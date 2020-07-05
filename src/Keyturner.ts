@@ -1,11 +1,15 @@
 import * as bleno from "@abandonware/bleno";
 import {Advertiser} from "./Advertiser";
-import {PairingService} from "./PairingService";
-import {KeyturnerService} from "./KeyturnerService";
-import {DeviceInformationService} from "./DeviceInformationService";
 import {Configuration} from "./Configuration";
 import {PairingServiceHandler} from "./PairingServiceHandler";
 import {KeyturnerServiceHandler} from "./KeyturnerServiceHandler";
+import {DataIoPeripheral} from "./DataIoPeripheral";
+import {CommandPeripheral} from "./CommandPeripheral";
+import {
+    FIRMWARE_VERSION,
+    HARDWARE_VERSION,
+    KEYTURNER_SERVICES
+} from "./Protocol";
 
 export class Keyturner {
 
@@ -13,22 +17,22 @@ export class Keyturner {
     private pairingServiceHandler: PairingServiceHandler;
     private keyturnerServiceHandler: KeyturnerServiceHandler;
     private advertiser: Advertiser;
-    private keyturnerPairingService: PairingService;
-    private keyturnerService: KeyturnerService;
-    private deviceInformationService: DeviceInformationService;
+    private keyturnerPeripheral: DataIoPeripheral;
 
     constructor() {
         this.config = new Configuration();
         this.pairingServiceHandler = new PairingServiceHandler(this.config);
         this.keyturnerServiceHandler = new KeyturnerServiceHandler(this.config);
         this.advertiser = new Advertiser(this.config);
-        this.keyturnerPairingService = new PairingService(
-            this.pairingServiceHandler.handleRequest.bind(this.pairingServiceHandler)
-        );
-        this.keyturnerService = new KeyturnerService(
-            this.keyturnerServiceHandler.handleRequest.bind(this.keyturnerServiceHandler)
-        );
-        this.deviceInformationService = new DeviceInformationService(this.config);
+        const commandPeripheral = new CommandPeripheral([this.pairingServiceHandler.handleCommand, this.keyturnerServiceHandler.handleCommand], (authId) => {
+            const user = this.config.getUser(authId);
+            return user ? Buffer.from(user.sharedSecret, "hex") : undefined;
+        });
+        this.keyturnerPeripheral = new DataIoPeripheral(KEYTURNER_SERVICES, {
+            serialNumber: this.config.getNukiIdStr(),
+            firmwareVersion: FIRMWARE_VERSION,
+            hardwareVersion: HARDWARE_VERSION
+        }, commandPeripheral.handleDataIo);
     }
 
     async init(): Promise<void> {
@@ -40,11 +44,7 @@ export class Keyturner {
         bleno.on('addressChange', this.onAddressChange);
         bleno.on('rssiUpdate', this.onRssiUpdate);
         bleno.on('servicesSet', this.onServicesSet);
-        bleno.setServices([
-            this.keyturnerPairingService,
-            this.keyturnerService,
-            this.deviceInformationService
-        ]);
+        this.keyturnerPeripheral.registerServices();
         await this.advertiser.init();
     }
 
@@ -59,9 +59,7 @@ export class Keyturner {
     private onDisconnect = () => {
         console.log('on -> disconnect');
         this.pairingServiceHandler.reset();
-        this.keyturnerPairingService.reset();
         this.keyturnerServiceHandler.reset();
-        this.keyturnerService.reset();
         this.advertiser.update();
     }
 

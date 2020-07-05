@@ -27,10 +27,9 @@ export class DataIoService extends bleno.PrimaryService {
             ))
         });
         this.chars = this.characteristics as DataIoCharacteristic[];
-    }
-
-    reset(): void {
-        this.pendingIndicationPromise = Promise.resolve();
+        bleno.on("disconnect", () => {
+            this.pendingIndicationPromise = Promise.resolve();
+        })
     }
 
     onWrite(data: Buffer, characteristicId: number): void {

@@ -1,27 +1,25 @@
 import * as bleno from "@abandonware/bleno"
-import {Configuration} from "./Configuration";
-import {FIRMWARE_VERSION, HARDWARE_VERSION} from "./Protocol";
 
 export class DeviceInformationService extends bleno.PrimaryService {
 
-    constructor(config: Configuration) {
+    constructor(serialNumber: string, firmwareVersion: number, hardwareVersion: number) {
         super({
             uuid: "180A",
             characteristics: [
                 new bleno.Characteristic({
                     uuid: "2A25",
                     properties: ["read"],
-                    value: Buffer.from(config.getNukiIdStr(), "ascii")
+                    value: Buffer.from(serialNumber, "ascii")
                 }),
                 new bleno.Characteristic({
                     uuid: "2A26",
                     properties: ["read"],
-                    value: Buffer.from(DeviceInformationService.formatVersion(FIRMWARE_VERSION, 3), "ascii")
+                    value: Buffer.from(DeviceInformationService.formatVersion(firmwareVersion, 3), "ascii")
                 }),
                 new bleno.Characteristic({
                     uuid: "2A27",
                     properties: ["read"],
-                    value: Buffer.from(DeviceInformationService.formatVersion(HARDWARE_VERSION, 2), "ascii")
+                    value: Buffer.from(DeviceInformationService.formatVersion(hardwareVersion, 2), "ascii")
                 })
             ]
         });

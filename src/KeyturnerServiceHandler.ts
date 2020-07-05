@@ -1,5 +1,5 @@
 import {Configuration} from "./Configuration";
-import {decrypt, encrypt, random} from "./Crypto";
+import {random} from "./Crypto";
 import {
     DOOR_SENSOR_STATE_CALIBRATING,
     DOOR_SENSOR_STATE_CLOSED,
@@ -11,7 +11,6 @@ import {
     FOB_ACTION_NONE,
     FOB_ACTION_UNLOCK,
     HARDWARE_VERSION, HOMEKIT_STATUS_ENABLED,
-    KEYTURNER_GDIO_CHARACTERISTIC,
     KEYTURNER_USDIO_CHARACTERISTIC,
     LOCK_ACTION_FOB_ACTION_1,
     LOCK_ACTION_FOB_ACTION_2,
@@ -32,26 +31,21 @@ import {
     NUKI_STATE_PAIRING_MODE,
     NUKI_STATE_UNINITIALIZED
 } from "./Protocol";
-import {decodeCommand, encodeCommand} from "./command/Codec";
 import {
     CMD_CHALLENGE,
     CMD_FIRMWARE_STATUS,
     CMD_KEYTURNER_STATES,
-    ERROR_BAD_CRC,
-    ERROR_BAD_LENGTH,
     ERROR_UNKNOWN,
     K_ERROR_BAD_NONCE,
     K_ERROR_BAD_PARAMETER,
     K_ERROR_BAD_PIN,
     K_ERROR_INVALID_AUTH_ID,
-    K_ERROR_NOT_AUTHORIZED,
     STATUS_ACCEPTED,
     STATUS_COMPLETE
 } from "./command/Constants";
 import {Command} from "./command/Command";
 import {RequestDataCommand} from "./command/RequestDataCommand";
 import {ErrorCommand} from "./command/ErrorCommand";
-import {DecodingError} from "./command/DecodingError";
 import {ChallengeCommand} from "./command/ChallengeCommand";
 import {FirmwareStatusCommand} from "./command/FirmwareStatusCommand";
 import {RequestConfigCommand} from "./command/RequestConfigCommand";
@@ -67,7 +61,6 @@ import {RequestCalibrationCommand} from "./command/RequestCalibrationCommand";
 import {SetSecurityPinCommand} from "./command/SetSecurityPinCommand";
 import {RemoveAuthorizationEntryCommand} from "./command/RemoveAuthorizationEntryCommand";
 import {KeyturnerStatesCommand} from "./command/KeyturnerStatesCommand";
-import {checkCrc, setCrc} from "./command/Util";
 import {SetAdvancedConfigCommand} from "./command/SetAdvancedConfigCommand";
 import {CommandNeedsChallenge} from "./command/CommandNeedsChallenge";
 import {CommandNeedsSecurityPin} from "./command/CommandNeedsSecurityPin";
@@ -114,96 +107,13 @@ export class KeyturnerServiceHandler {
         }
     }
 
-    async handleRequest(data: Buffer, characteristicId: number, sendAsync: (data: Buffer, characteristicId: number) => Promise<void>, disconnect: () => void): Promise<void> {
-        if (characteristicId === KEYTURNER_USDIO_CHARACTERISTIC) {
-            try {
-                let decrypted: Buffer;
-                let authorizationId: number;
-                let sharedSecret: Buffer;
-                try {
-                    ({data: decrypted, authorizationId, sharedSecret} = decryptCommand(data, (id) => {
-                        const user = this.config.getUser(id);
-                        return user && Buffer.from(user.sharedSecret, "hex");
-                    }));
-                } catch (e) {
-                    console.log("Error decrypting command", data.toString("hex"), e);
-                    this.state = {
-                        key: "Initial"
-                    };
-                    await sendAsync(encodeCommand(new ErrorCommand(K_ERROR_NOT_AUTHORIZED, 0)), KEYTURNER_GDIO_CHARACTERISTIC);
-                    return;
-                }
-
-                let command: Command;
-                try {
-                    command = decodeCommand(decrypted, true);
-                    console.log("received " + command.toString());
-                } catch (e) {
-                    console.log("Error decoding command", decrypted.toString("hex"), e);
-                    this.state = {
-                        key: "Initial"
-                    };
-                    if (e instanceof DecodingError) {
-                        await sendAsync(encryptCommand(encodeCommand(new ErrorCommand(e.code, e.commandId)), authorizationId, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
-                    } else {
-                        await sendAsync(encryptCommand(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), authorizationId, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
-                    }
-                    return;
-                }
-
-                let response: Command;
-                try {
-                    const sendCommand = async (command: Command): Promise<void> => {
-                        console.log("sending " + command.toString());
-                        try {
-                            await sendAsync(encryptCommand(encodeCommand(command), authorizationId, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
-                        } catch (e) {
-                            console.log("Error sending intermediate response, disconnecting", e);
-                            this.state = {
-                                key: "Initial"
-                            };
-                            disconnect();
-                            throw sendCommand;
-                        }
-                    };
-
-                    response = await this.handleCommand(command, sendCommand);
-                } catch (e) {
-                    if (e === sendAsync) {
-                        // error already handled
-                        return;
-                    }
-                    console.log("Error executing command", e);
-                    this.state = {
-                        key: "Initial"
-                    };
-                    await sendAsync(encryptCommand(encodeCommand(new ErrorCommand(ERROR_UNKNOWN)), authorizationId, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
-                    return;
-                }
-
-                console.log("sending " + response.toString());
-                if (response instanceof ErrorCommand) {
-                    this.state = {
-                        key: "Initial"
-                    };
-                    if (response.message) {
-                        console.log(response.message);
-                    }
-                }
-                await sendAsync(encryptCommand(encodeCommand(response), authorizationId, sharedSecret), KEYTURNER_USDIO_CHARACTERISTIC);
-            } catch (e) {
-                console.log("Error sending response, disconnecting", e);
-                this.state = {
-                    key: "Initial"
-                };
-                disconnect();
-            }
-        } else {
-            throw new Error(`Data received on unexpected characteristic ${characteristicId} ${data.toString("hex")}`);
+    handleCommand = async (request: {command: Command, characteristicId: number, authorizationId?: number}, sendCommand: (command: Command) => Promise<void>): Promise<Command|false> => {
+        if (request.characteristicId !== KEYTURNER_USDIO_CHARACTERISTIC) {
+            return false;
         }
-    }
 
-    private async handleCommand(command: Command, sendCommand: (command: Command) => Promise<void>): Promise<Command> {
+        const command = request.command;
+
         if (command instanceof CommandNeedsChallenge) {
             if (this.state.key !== "ChallengeSent") {
                 return new ErrorCommand(ERROR_UNKNOWN, command.id, `unexpected state ${this.state.key} for command ${command.id}`);
@@ -564,63 +474,4 @@ export class KeyturnerServiceHandler {
         });
     }
 
-}
-
-export function decryptCommand(data: Buffer, sharedSecretProvider: (authId: number) => Buffer|undefined): {
-    data: Buffer,
-    authorizationId: number,
-    sharedSecret: Buffer
-} {
-    if (data.length < 38) {
-        throw new DecodingError(ERROR_BAD_LENGTH, 0, "bad length");
-    }
-
-    const nonce = data.slice(0, 24);
-    const authorizationId = data.readUInt32LE(24);
-    const commandLen = data.readUInt16LE(28);
-    const encryptedCommand = data.slice(30);
-    if (encryptedCommand.length !== commandLen) {
-        throw new DecodingError(ERROR_BAD_LENGTH, 0, "bad encrypted command length");
-    }
-
-    const sharedSecret = sharedSecretProvider(authorizationId);
-    if (!sharedSecret) {
-        throw new DecodingError(K_ERROR_INVALID_AUTH_ID, 0, "bad user");
-    }
-
-    const decryptedCommand = decrypt(Buffer.concat([encryptedCommand]), nonce, sharedSecret);
-    if (!decryptedCommand) {
-        throw new DecodingError(ERROR_UNKNOWN, 0, "bad encryption");
-    }
-
-    if (!checkCrc(decryptedCommand)) {
-        throw new DecodingError(ERROR_BAD_CRC, 0, "bad crc");
-    }
-
-    const authorizationIdFromEncryptedCommand = decryptedCommand.readUInt32LE(0);
-    if (authorizationIdFromEncryptedCommand !== authorizationId) {
-        throw new DecodingError(K_ERROR_INVALID_AUTH_ID, 0, "invalid encrypted command auth id");
-    }
-
-    return {
-        data: decryptedCommand.slice(4),
-        authorizationId,
-        sharedSecret
-    };
-}
-
-export function encryptCommand(data: Buffer, authId: number, sharedSecret: Buffer): Buffer {
-    const authIdBuffer = Buffer.alloc(4);
-    authIdBuffer.writeUInt32LE(authId, 0);
-    const responseData = Buffer.concat([authIdBuffer, data]);
-    setCrc(responseData);
-
-    const nonce = random(24);
-
-    const pDataEncrypted = encrypt(responseData, nonce, sharedSecret);
-
-    const lenBuffer = Buffer.alloc(2);
-    lenBuffer.writeUInt16LE(pDataEncrypted.length, 0);
-
-    return Buffer.concat([nonce, authIdBuffer, lenBuffer, pDataEncrypted]);
 }

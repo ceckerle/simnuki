@@ -11,6 +11,27 @@ export const KEYTURNER_GDIO_CHARACTERISTIC = 0x201;
 export const KEYTURNER_USDIO_CHARACTERISTIC = 0x202;
 export const KEYTURNER_THRID_CHARACTERISTIC = 0x203;
 
+export const KEYTURNER_SERVICES = [{
+    uuid: PAIRING_SERVICE_UUID,
+    characteristics: [{
+        uuid: PAIRING_GDIO_CHARACTERISTIC_UUID,
+        id: PAIRING_GDIO_CHARACTERISTIC
+    }]
+}, {
+    uuid: KEYTURNER_SERVICE_UUID,
+    characteristics: [{
+        uuid: KEYTURNER_GDIO_CHARACTERISTIC_UUID,
+        id: KEYTURNER_GDIO_CHARACTERISTIC
+    }, {
+        uuid: KEYTURNER_USDIO_CHARACTERISTIC_UUID,
+        id: KEYTURNER_USDIO_CHARACTERISTIC
+    }, {
+        uuid: KEYTURNER_THRID_CHARACTERISTIC_UUID,
+        id: KEYTURNER_THRID_CHARACTERISTIC,
+        writeOnly: true
+    }]
+}];
+
 export const FIRMWARE_VERSION = 0x020000;
 export const HARDWARE_VERSION = 0x0205; // iOS app will hide some config options for lower versions, Android app does not care
 

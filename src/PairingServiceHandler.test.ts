@@ -2,7 +2,6 @@ import {Configuration, User} from "./Configuration";
 import {mocked} from "ts-jest/utils";
 import {PairingServiceHandler} from "./PairingServiceHandler";
 import {computeAuthenticator, deriveSharedSecret, generateKeyPair, random} from "./Crypto";
-import {decodeCommand, encodeCommand} from "./command/Codec";
 import {RequestDataCommand} from "./command/RequestDataCommand";
 import {CMD_PUBLIC_KEY, STATUS_COMPLETE} from "./command/Constants";
 import {PublicKeyCommand} from "./command/PublicKeyCommand";
@@ -14,14 +13,15 @@ import {AuthorizationDataCommand} from "./command/AuthorizationDataCommand";
 import {AuthorizationIdCommand} from "./command/AuthorizationIdCommand";
 import {AuthorizationIdConfirmationCommand} from "./command/AuthorizationIdConfirmationCommand";
 import {StatusCommand} from "./command/StatusCommand";
-import {DataIoServiceHandler} from "./DataIoService";
+import {CommandHandler} from "./CommandPeripheral";
+import {createCentralPeripheralPair} from "./CommandCentralPeripheral.test";
 
 jest.mock("./Configuration");
 
 const config = new Configuration();
 const mockedConfig = mocked(config, true);
 const unwrappedHandler = new PairingServiceHandler(config);
-const handler = wrapHandleRequest(unwrappedHandler.handleRequest.bind(unwrappedHandler));
+const handler = wrapHandleRequest(unwrappedHandler.handleCommand);
 
 beforeEach(() => {
     jest.resetAllMocks();
@@ -73,21 +73,10 @@ test("pairing", async () => {
     expect(status.status).toBe(STATUS_COMPLETE);
 });
 
-function wrapHandleRequest(handleRequest: DataIoServiceHandler)  {
+function wrapHandleRequest(commandHandler: CommandHandler)  {
+    const central = createCentralPeripheralPair(commandHandler, () => undefined);
+
     return async <T extends Command>(command: Command, clazz: new() => T): Promise<T> => {
-        return new Promise<T>((resolve, reject) => {
-            handleRequest(encodeCommand(command), PAIRING_GDIO_CHARACTERISTIC, async (data, characteristicId) => {
-                try {
-                    if (characteristicId !== PAIRING_GDIO_CHARACTERISTIC) {
-                        throw new Error(`Unexpected characteristic id ${characteristicId.toString(16)}`);
-                    }
-                    const result = decodeCommand(data);
-                    expect(result).toBeInstanceOf(clazz);
-                    resolve(result as T);
-                } catch (e) {
-                    reject(e);
-                }
-            }, () => undefined).catch(reject);
-        });
+        return await central.executeCommand(command, PAIRING_GDIO_CHARACTERISTIC, clazz);
     };
 }
